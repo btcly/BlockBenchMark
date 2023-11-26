@@ -11,11 +11,13 @@
 |   Ethereum    |   v1.10.20 |
 |   Meepo    |   v0.0.0（commit:7e84406856） |
 |NeuChain |  v0.0.1 |
+|ansible   |v2.10.8|
 |ansible-playbook   |v2.10.8|
 # Deploy
 使用ansible-playbook通过主机列表和任务列表进行集群管理和自动部署，使用前请提前对控制端和远程端进行免密登录和sudo权限免密获取。
 
 部署主要分为[监控部署](./deploy/deploy_local/readme.md)（mysql，prometheus，grafana等），[区块链搭建](./deploy/deploy_remote/readme.md)（Fabric，ETH私链，Meepo），可以快速搭建测试的环境。
+
 ## monitor
 安装命令：
 ```shell
@@ -27,6 +29,16 @@
 * grafana：用于数据展示，一般安装在非server端
 * prometheus：用于收集机器数据，进行机器状态监控，一般安装在非server端
 * node_exporter：安装在被监控机器侧，上报机器状态数据给prometheus，一般集群中的机器都需要安装
+
+### Grafama配置
+安装完成后地址为：http://XXXX:3000
+
+登录用户和密码为：admin、admin
+
+grafana的数据已经配置，路径为：./grafana_data/grafana.db
+
+> **更改mysql和prometheus数据源的IP地址**
+
 ## Fabric 搭建
 执行命令：
 ```shell
