@@ -1,0 +1,41 @@
+{
+    "type" : "server",
+    "mysql" : {
+        "userName" : "root",
+        "password" : "123456",
+        "ipAddrees" : "127.0.0.1",
+        "port" : "3306",
+        "dbName" : "block",
+        "charset" : "utf8"
+    },
+    "redis" :
+    {
+        "url" : "127.0.0.1:6379",
+        "passwd" : ""
+    },
+    "sever_ip" :":5555",
+    "nodes" :
+    [
+        {
+            "name" : "ETHPersonal",
+            "nodeurl" : "ws://192.168.93.137:8546",
+            "conf":"",
+            "chainid":"1234",
+            "open" : true
+        },
+        {
+            "name" : "MeepoPersonal",
+            "nodeurl" : "http://192.168.93.141:8545",
+            "conf":"",
+            "chainid":"1234",
+            "open" : true
+        },
+        {
+            "name" : "Fabric",
+            "nodeurl" : "",
+            "conf":"",
+            "open" : true
+        }
+    ]
+}
+

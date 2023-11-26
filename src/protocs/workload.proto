@@ -1,0 +1,29 @@
+// proto/hello.proto
+
+syntax = "proto3";
+
+package proto; // 包名
+
+option go_package="./;proto";
+
+// The WorkLoad service definition.
+service WorkLoad {
+  rpc SendWorkLoad (WorkLoadRequest) returns (WorkLoadResponse) {}
+}
+
+// The request message
+message WorkLoadRequest {
+  string blockchainName = 1;
+  string chaincodeID = 2;
+  string chaincodeFunc = 3;
+  string clientUUID = 4;
+  int64 paramsLen = 5;
+  // 压测数据参数
+  repeated string params = 6;
+}
+
+// The response message
+message WorkLoadResponse {
+  string message = 1;
+}
+

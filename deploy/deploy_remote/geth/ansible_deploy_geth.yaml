@@ -1,0 +1,120 @@
+    
+- name: Geth Block Operation
+  hosts: geth
+  tasks:
+    - name: Ping remote hosts
+      ping:
+
+    - name: Install System Service
+      apt:
+        name: 
+          - firewalld
+          - rsync
+          - systemd
+          - net-tools
+          - curl
+        state: latest  
+      become: yes  # 提升权限
+
+    - name: Init System Service  #  开放端口以及清空目录
+      shell: |
+        timedatectl set-timezone Asia/Shanghai
+        systemctl start firewalld
+        systemctl enable firewalld
+        firewall-cmd --zone=public --add-port=8545/tcp --permanent
+        firewall-cmd --zone=public --add-port=8546/tcp --permanent
+        firewall-cmd --zone=public --add-port=30303/tcp --permanent
+        firewall-cmd --zone=public --add-port=9100/tcp --permanent
+        firewall-cmd --zone=public --add-port=9100/udp --permanent
+        firewall-cmd --reload
+        systemctl stop geth
+        mkdir -pv "{{ workpath }}"
+        rm -rf "{{ workpath }}"
+      become: true  # 提升权限
+
+    - name: Synchronize files
+      synchronize:
+        src: ./geth_pack/  # 当前目录
+        dest: "{{ workpath }}"
+        recursive: yes  # 表示递归地复制文件和子目录
+        copy_links: yes  # 表示复制符号链接指向的文件
+        perms: yes  # 保留文件权限。
+        delete: yes # 删除目标中不存在于源中的文件
+        owner: no  # 保留文件的所有者和组信息
+        group: no
+      become: true  # 提升权限
+
+    - name: Deploy Geth
+      shell: |
+        cd {{ workpath }}
+        cp -f conf/{{ inventory_hostname }}.miner geth.miner
+        sed -i 's/IPADDR_REPLACE/{{ ansible_host }}/g' deploy.sh
+        /bin/bash deploy.sh
+        curl -s --data '{\"jsonrpc\":\"2.0\",\"method\":\"miner_stop\",\"params\":[],\"id\":0}' -H 'Content-Type: application/json' -X POST localhost:8545
+      become: true  # 提升权限
+
+    # 等待服务启动，超时300's
+    - name: Wait for the Geth enode field
+      shell: "curl -s --data '{\"jsonrpc\":\"2.0\",\"method\":\"admin_nodeInfo\",\"params\":[],\"id\":0}' -H 'Content-Type: application/json' -X POST localhost:8545"
+      register: enode_output
+      until: enode_output.stdout.find("enode://") != -1
+      retries: 30
+      delay: 10
+
+    - name: Start Wait for 60's
+      wait_for:
+        timeout: 60
+
+    - name: Wait for the Geth enode field
+      shell: "curl -s --data '{\"jsonrpc\":\"2.0\",\"method\":\"admin_nodeInfo\",\"params\":[],\"id\":0}' -H 'Content-Type: application/json' -X POST localhost:8545"
+      register: enode_output
+  
+    - name: Extract enode value
+      vars:
+        result_value: "{{ enode_output.stdout | from_json | json_query('result') }}"
+      set_fact:
+        enode_value: "{{ result_value['enode'] }}"
+
+
+    - name: Show enode value
+      debug:
+        msg: "{{ enode_value }}"
+
+    - name: Gather command outputs and save to file
+      copy:
+        content: |
+          #!/bin/bash
+          # 声明一个空数组
+          enode_array=()
+          {% for host in groups['geth'] %}
+          # Command request {{ host }}:{{ hostvars[host].ansible_host  }}
+          node_value=$(curl -s --data '{"jsonrpc":"2.0","method":"admin_nodeInfo","params":[],"id":0}' -H "Content-Type: application/json" -X POST {{ hostvars[host].ansible_host }}:8545|grep -Eo "enode://[0-9a-f]{128}@([0-9]{1,3}\.){3}[0-9]{1,3}:[0-9]+")
+          enode_array+=(${node_value})
+          echo "curl -s --data '{\"jsonrpc\":\"2.0\",\"method\":\"admin_addPeer\",\"params\":[\"${node_value}\"],\"id\":0}' -H \"Content-Type: application/json\" -X POST localhost:8545"|bash
+          {% endfor %}
+          # 如果数组不为空，将数组内容格式化并写入文件
+          {% set shell_array_name = '${#enode_array[@]}' %}
+          if [ "{{ shell_array_name }}" -gt 0 ]; then
+            formatted_array=$(printf '    "%s",\n' "${enode_array[@]}")
+            formatted_array="${formatted_array%,}"
+            {
+              echo '['
+              echo "$formatted_array"
+              echo ']'
+            } > "{{ workpath }}/nodedata/geth/static_nodes.json"
+          else
+            # 如果数组为空，只写入中括号
+            {
+              echo '['
+              echo ']'
+            } > "{{ workpath }}/nodedata/geth/static_nodes.json"
+          fi
+        dest: "{{ workpath }}/geth_enode.sh"
+      become: true  # 提升权限
+
+    - name: Connection Geth Enode 
+      shell: |
+        /bin/bash "{{ workpath }}"/geth_enode.sh
+      become: true  # 提升权限
+
+

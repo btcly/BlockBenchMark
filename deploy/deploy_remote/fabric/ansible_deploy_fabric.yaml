@@ -1,0 +1,242 @@
+- name: Fabric Block Operation
+  hosts: fabric
+  tasks:
+    - name: Ping remote hosts
+      ping:
+
+#     # - name: Stop System Service  #  开放端口以及清空目录
+#     #   shell: |
+#     #     reboot
+#     #   timeout: 600
+#     #   become: true  # 提升权限
+
+#     # - name: Remove System Service
+#     #   apt:
+#     #     name: 
+#     #       - docker
+#     #       - docker-engine
+#     #       - docker.io
+#     #       - containerd.io
+#     #       - containerd
+#     #       - runc
+#     #     state: absent       # 状态设置为 absent 表示卸载软件包  
+#     #   become: yes  # 提升权限
+      
+
+    - name: Install System Service
+      apt:
+        name:
+          - firewalld
+          - rsync
+          - systemd
+          - net-tools
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - docker.io
+          - docker-compose
+
+        state: latest  
+      become: yes  # 提升权限
+
+    - name: Init System Service  #  开放端口以及清空目录
+      shell: |
+        timedatectl set-timezone Asia/Shanghai
+        systemctl stop docker.service
+        systemctl restart firewalld
+        systemctl enable firewalld
+        firewall-cmd --zone=public --add-port=7050/tcp --permanent
+        firewall-cmd --zone=public --add-port=7051/tcp --permanent
+        firewall-cmd --zone=public --add-port=7052/tcp --permanent
+        firewall-cmd --zone=public --add-port=7053/tcp --permanent
+        firewall-cmd --zone=public --add-port=7054/tcp --permanent
+        firewall-cmd --zone=public --add-port=9100/tcp --permanent
+        firewall-cmd --zone=public --add-port=9100/udp --permanent
+        firewall-cmd --reload
+        mkdir -p /etc/docker
+        tee /etc/docker/daemon.json <<-'EOF'
+        {
+          "registry-mirrors": ["https://elz0vctf.mirror.aliyuncs.com"]
+        }
+        EOF
+        mkdir -pv "{{ workpath }}"
+        rm -rf "{{ workpath }}/"
+      timeout: 600
+      become: true  # 提升权限
+
+    - name: Check group membership
+      debug:
+        msg: "Hostname: {{ inventory_hostname }}: {{ group_names[1] }}- {{ ansible_host }}"
+    - name: Synchronize Fabric files
+      synchronize:
+        src: ./fabric_pack/node_exporter  # 当前目录
+        dest: "{{ workpath }}"
+        recursive: yes  # 表示递归地复制文件和子目录
+        copy_links: yes  # 表示复制符号链接指向的文件
+        perms: yes  # 保留文件权限。
+        # delete: yes # 删除目标中不存在于源中的文件
+        owner: no  # 保留文件的所有者和组信息
+        group: no
+      become: true  # 提升权限
+
+    - name: Init node_exporter Service  #  开放端口以及清空目录
+      shell: |
+        cd {{ workpath }}/node_exporter/
+        /bin/bash install_node.sh
+      timeout: 600
+      become: true  # 提升权限
+
+- name: Fabric Block Operation
+  hosts: orders
+  tasks:
+    - name: Remove Fabric OLD Docker
+      shell: |
+        systemctl restart docker
+        docker stop $(docker ps -aq)
+        docker rm $(docker ps -aq)
+        yes 'y' | docker volume  prune
+        yes 'y' | docker container prune
+
+      become: true  # 提升权限
+
+    - name: Check group membership
+      debug:
+        msg: "Hostname: {{ inventory_hostname }}: {{ group_names[1] }}- {{ ansible_host }}"
+    - name: Synchronize Fabric files
+      synchronize:
+        src: ./fabric_pack/orders  # 当前目录
+        dest: "{{ workpath }}"
+        recursive: yes  # 表示递归地复制文件和子目录
+        copy_links: yes  # 表示复制符号链接指向的文件
+        perms: yes  # 保留文件权限。
+        # delete: yes # 删除目标中不存在于源中的文件
+        owner: no  # 保留文件的所有者和组信息
+        group: no
+      become: true  # 提升权限
+
+    - name: Generate hosts file
+      template:
+        src: "./fabric_pack/orders/docker-compose-orderer.yaml.j2"  # 模板文件路径
+        dest: "{{ workpath }}/orders/docker-compose-{{ inventory_hostname }}.yaml"  # 本地目标输出文件路径
+        remote_src: false
+      become: true  # 提升权限
+
+    - name: Deploy Fabric
+      shell: |
+        docker-compose -f "{{ workpath }}"/orders/docker-compose-{{ inventory_hostname }}.yaml up -d
+        docker update --restart=always $(docker ps -aq)
+      become: true  # 提升权限
+
+- name: Fabric Block Operation
+  hosts: peers
+  tasks:
+    - name: Remove Fabric OLD Docker
+      shell: |
+        systemctl restart docker
+        docker stop $(docker ps -aq)
+        docker rm $(docker ps -aq)
+        yes 'y' | docker volume  prune
+        yes 'y' | docker container prune
+      become: true  # 提升权限
+
+    - name: Check group membership
+      debug:
+        msg: "Hostname: {{ inventory_hostname }}: {{ group_names[1] }}- {{ ansible_host }}"
+    - name: Synchronize Fabric files
+      synchronize:
+        src: ./fabric_pack/peers  # 当前目录
+        dest: "{{ workpath }}"
+        recursive: yes  # 表示递归地复制文件和子目录
+        copy_links: yes  # 表示复制符号链接指向的文件
+        perms: yes  # 保留文件权限。
+        # delete: yes # 删除目标中不存在于源中的文件
+        owner: no  # 保留文件的所有者和组信息
+        group: no
+      become: true  # 提升权限
+
+    - name: Generate hosts file
+      template:
+        src: "./fabric_pack/peers/docker-compose-peer.yaml.j2"  # 模板文件路径
+        dest: "{{ workpath }}/peers/docker-compose-{{ inventory_hostname }}.yaml"  # 本地目标输出文件路径
+        remote_src: false
+      become: true  # 提升权限
+
+    - name: Deploy Fabric
+      shell: |
+        docker-compose -f "{{ workpath }}"/peers/docker-compose-{{ inventory_hostname }}.yaml up -d
+        docker update --restart=always $(docker ps -aq)
+      become: true  # 提升权限
+
+
+- name: Fabric Block Operation
+  hosts: peertool
+  tasks:
+    - name: Ping remote hosts
+      ping:
+
+    - name: Deploy Fabric
+      shell: |
+        docker exec -it cli sh -c "/bin/bash fabricdata/deploy/pack_chaincode.sh"
+
+      become: true  # 提升权限 
+      # run_once: true  # 仅在一个主机上执行，以防止多次复制
+
+    - name: Fetch file from remote to local
+      ansible.builtin.synchronize:
+        src: "{{ workpath }}/peers/fabricdata/package"  # 远程文件路径
+        dest: ./fabricdata  # 本地目标文件夹路径
+        mode: pull
+      become: true  # 提升权限
+
+- name: Fabric Block Operation
+  hosts: peers
+  tasks:
+    - name: Copy file from group1 to group2
+      synchronize:
+        src: ./fabricdata/ # 当前目录
+        dest: "{{ workpath }}/peers/fabricdata/"
+        recursive: yes  # 表示递归地复制文件和子目录
+        copy_links: yes  # 表示复制符号链接指向的文件
+        perms: yes  # 保留文件权限。
+        owner: no  # 保留文件的所有者和组信息
+        group: no
+      become: true  # 提升权限
+
+    - name: Deploy Fabric Chaincode
+      shell: |
+          docker exec -it cli sh -c "/bin/bash fabricdata/deploy/deploy_chaincode.sh"
+
+      timeout: 300
+      become: true  # 提升权限
+
+    - name: Commit Fabric Chaincode
+      shell: |
+          docker exec -it cli sh -c "/bin/bash fabricdata/deploy/commit_chaincode.sh"
+      timeout: 300
+      run_once: true  # 仅在一个主机上执行，以防止多次执行
+      become: true  # 提升权限
+
+
+- name: Fabric Block Operation
+  hosts: peers
+  tasks:
+    - name: Run local shell command
+      ansible.builtin.file:
+        path: ./fabricdata
+        state: absent
+      run_once: true  # 仅在一个主机上执行，以防止多次执行
+      delegate_to: localhost
+  
+# - name: Fabric Block Operation
+#   hosts: peers
+#   tasks:
+#     - name: Echo Fabric Chaincode
+#       shell: docker exec -it cli sh -c 'echo ${CORE_PEER_TLS_ROOTCERT_FILE}'
+#       register: enode_output
+#       become: true  # 提升权限
+
+#     - name: Show enode value
+#       debug:
+#         msg: "{{ enode_output.stdout }}"
+

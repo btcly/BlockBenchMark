@@ -1,0 +1,19 @@
+meepo:
+  vars:
+    workpath: "/opt/block/meepo"
+
+  hosts:
+    node1:
+      ansible_host: 192.168.93.141
+      ansible_user: meepo 
+    node2:
+      ansible_host: 192.168.93.142
+      ansible_user: meepo
+    node3:
+      ansible_host: 192.168.93.143
+      ansible_user: meepo
+    node4:
+      ansible_host: 192.168.93.144
+      ansible_user: meepo
+
+

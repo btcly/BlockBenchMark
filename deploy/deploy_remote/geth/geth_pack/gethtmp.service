@@ -1,0 +1,13 @@
+[Unit]
+Descriptinotallow=geth Monitoring System
+Documentatinotallow=geth Monitoring System
+ 
+[Service]
+WorkingDirectory=WORK
+ExecStart=EXEC
+User=root
+Group=root
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

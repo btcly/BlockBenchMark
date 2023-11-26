@@ -1,0 +1,12 @@
+[Unit]
+Descriptinotallow=node_exporter Monitoring System
+Documentatinotallow=node_exporter Monitoring System
+ 
+[Service]
+ExecStart=/usr/local/bin/node_exporter --web.listen-address=:9100
+User=root
+Group=root
+Restart=always
+ 
+[Install]
+WantedBy=multi-user.target

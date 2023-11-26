@@ -1,0 +1,17 @@
+geth:
+  vars:
+    workpath: "/opt/block/geth"
+
+  hosts:
+    geth1:
+      ansible_host: 192.168.93.137
+      ansible_user: geth 
+    geth2:
+      ansible_host: 192.168.93.138 
+      ansible_user: geth 
+    geth3:
+      ansible_host: 192.168.93.139 
+      ansible_user: geth
+    geth4:
+      ansible_host: 192.168.93.140 
+      ansible_user: geth

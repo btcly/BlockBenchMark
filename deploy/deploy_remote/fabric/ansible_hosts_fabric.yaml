@@ -1,0 +1,41 @@
+fabric:
+  vars:
+    workpath: "/opt/block/fabric"
+  
+  children:
+    orders:
+      hosts:
+        orderer1:
+          ansible_host: 192.168.93.153
+          ansible_user: test
+        orderer2:
+          ansible_host: 192.168.93.154
+          ansible_user: test
+        orderer3:
+          ansible_host: 192.168.93.155
+          ansible_user: test
+
+    peers:
+      hosts:
+        peer0.org1:
+          ansible_host: 192.168.93.156
+          ansible_user: test
+
+        peer1.org1:
+          ansible_host: 192.168.93.146
+          ansible_user: test
+
+        peer0.org2:
+          ansible_host: 192.168.93.147
+          ansible_user: test
+
+        peer1.org2:
+          ansible_host: 192.168.93.148
+          ansible_user: test
+    peertool:
+      hosts:
+        peer0.org1:
+          ansible_host: 192.168.93.156
+          ansible_user: test
+
+

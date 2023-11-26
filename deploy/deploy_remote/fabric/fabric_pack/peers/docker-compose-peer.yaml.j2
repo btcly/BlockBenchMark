@@ -1,0 +1,92 @@
+{% set hosts_list = inventory_hostname.split('.') %}
+{% set peer_name = hosts_list[0] %}
+{% set orgs_name = hosts_list[1] %}
+{% set org_num_list = orgs_name.split('g') %}
+{% set orgs_num = org_num_list[1] %}
+
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+version: '2'
+
+services:
+  {{ inventory_hostname }}.example.com:
+    container_name: {{ inventory_hostname }}.example.com
+    image: hyperledger/fabric-peer:2.2
+    environment:
+      - TZ=Asia/Shanghai
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_PEER_ID={{ inventory_hostname }}.example.com
+      - CORE_PEER_ADDRESS={{ inventory_hostname }}.example.com:7051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+      - CORE_PEER_CHAINCODEADDRESS={{ inventory_hostname }}.example.com:7052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+      - CORE_PEER_GOSSIP_BOOTSTRAP={{ inventory_hostname }}.example.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT={{ inventory_hostname }}.example.com:7051
+      - CORE_PEER_LOCALMSPID=Org{{ orgs_num }}MSP
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=peers_default  # 通过"docker network ls"查看
+      - CORE_PEER_GOSSIP_USELEADERELECTION=true
+      - CORE_PEER_GOSSIP_ORGLEADER=false
+      - CORE_PEER_PROFILE_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      # Allow more time for chaincode container to build on install.
+      - CORE_CHAINCODE_EXECUTETIMEOUT=300s
+
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: peer node start
+    volumes:
+      - /var/run/:/host/var/run/
+      - ./crypto-config/peerOrganizations/{{ orgs_name }}.example.com/peers/{{ inventory_hostname }}.example.com/msp:/etc/hyperledger/fabric/msp
+      - ./crypto-config/peerOrganizations/{{ orgs_name }}.example.com/peers/{{ inventory_hostname }}.example.com/tls:/etc/hyperledger/fabric/tls
+    ports:
+      - 7051:7051
+      - 7052:7052
+      - 7053:7053
+    extra_hosts:
+  {% for host  in groups['fabric'] %}
+    - "{{ host }}.example.com:{{ hostvars[host].ansible_host  }}"
+  {% endfor %}
+
+  cli:
+    container_name: cli
+    image: hyperledger/fabric-tools:2.2
+    tty: true
+    stdin_open: true
+    environment:
+      - TZ=Asia/Shanghai
+      - GOPATH=/opt/gopath
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - GOPROXY=https://goproxy.cn,direct
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_ID=cli
+      - CORE_PEER_ADDRESS={{ inventory_hostname }}.example.com:7051
+      - CORE_PEER_LOCALMSPID=Org{{ orgs_num }}MSP
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/{{ orgs_name }}.example.com/peers/{{ inventory_hostname }}.example.com/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/{{ orgs_name }}.example.com/peers/{{ inventory_hostname }}.example.com/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/{{ orgs_name }}.example.com/peers/{{ inventory_hostname }}.example.com/tls/ca.crt
+      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/{{ orgs_name }}.example.com/users/Admin@{{ orgs_name }}.example.com/msp
+      - CORE_PEER_ORDER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer1.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+      - CORE_PEER0_ORG1_TLS_CA_CRT=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+      - CORE_PEER0_ORG2_TLS_CA_CRT=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: /bin/bash
+    depends_on:
+      - {{ inventory_hostname }}.example.com
+    volumes:
+      - /var/run/:/host/var/run/
+      - ./chaincode:/opt/gopath/src/github.com/hyperledger/fabric/peer/chaincode/
+      - ./crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
+      - ./channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts
+      - ./fabricdata:/opt/gopath/src/github.com/hyperledger/fabric/peer/fabricdata
+      - ./production:/var/hyperledger/production
+    extra_hosts:
+  {% for host  in groups['fabric'] %}
+    - "{{ host }}.example.com:{{ hostvars[host].ansible_host  }}"
+  {% endfor %}

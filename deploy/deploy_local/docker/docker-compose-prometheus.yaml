@@ -1,0 +1,47 @@
+version: "3.7"
+services:
+  prometheus:
+    image: prom/prometheus:latest # 安装服务端
+    container_name: "prometheus0"
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - "9090:9090"
+    volumes:
+      - "./:/etc/prometheus"
+      - "./prometheus_data:/prometheus"
+  grafana:
+    image: grafana/grafana
+    container_name: "grafana0"
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - "3000:3000"
+    restart: always
+    volumes:
+      - "./grafana_data:/var/lib/grafana"
+      - "./grafana_log:/var/log/grafana"
+      - "./grafana_data/crypto_data:/crypto_data"  # 宿主机的地址是冒号前面的，冒号后面的是容器地址，不可变，这个用来放sqlite数据库的位置。
+
+  mysql:
+    image: mysql:5.7
+    restart: always
+    # network_mode: host
+    container_name: mysql0
+    environment:
+      - TZ=Asia/Shanghai
+      - MYSQL_ROOT_PASSWORD=123456
+    command:
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+      --explicit_defaults_for_timestamp=true
+      --lower_case_table_names=1
+      --max_allowed_packet=128M;
+    ports:
+      - 3306:3306
+    volumes:
+      - /data/mysql:/var/lib/mysql
+      - /etc/localtime:/etc/localtime:ro
+      # - /etc/my.cnf:/etc/my.cnf
