@@ -1,6 +1,6 @@
 module blcokbenchmark
 
-go 1.20
+go 1.17
 
 require (
 	github.com/ethereum/go-ethereum v1.10.22
@@ -17,6 +17,8 @@ require (
 	google.golang.org/grpc v1.48.0
 	google.golang.org/protobuf v1.28.1
 )
+
+require github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
@@ -48,7 +50,6 @@ require (
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
-	github.com/onsi/gomega v1.18.1 // indirect
 	github.com/pelletier/go-toml v1.8.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

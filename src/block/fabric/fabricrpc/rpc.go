@@ -2,7 +2,7 @@ package fabricrpc
 
 import (
 	// context1 "context"
-	"log"
+	// "log"
 
 	_ "io/ioutil"
 
@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/fab"
 	"github.com/hyperledger/fabric-sdk-go/pkg/core/config"
 	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk"
+	"github.com/golang/glog"
 )
 
 type FabricClient struct {
@@ -39,7 +40,7 @@ func InitSDK() *fabsdk.FabricSDK {
 	configProvider := config.FromFile("./conf/block/fabric/fabric_config.yaml")
 	sdk, err := fabsdk.New(configProvider)
 	if err != nil {
-		log.Printf("failed to create sdk: %s", err)
+		glog.Info("failed to create sdk: %s", err)
 	}
 	return sdk
 }
@@ -66,12 +67,12 @@ func (client *FabricClient) exeChaincode(chainCode string, chainCodeFunc string,
 	}
 	// createCarArgs := [][]byte{[]byte("key"), []byte("value")}
 	// createCarArgstest := [][]byte{[]byte("key"), []byte("value")}
-	// log.Printf("#########now:%s.\n", createCarArgs)
+	// glog.Info("#########now:%s.\n", createCarArgs)
 	resp1, err := client.channelclient.Execute(channel.Request{ChaincodeID: chainCode, Fcn: chainCodeFunc, Args: createCarArgs}, channel.WithRetry(retry.DefaultChannelOpts))
 	// createCarArgs := [][]byte{[]byte("CAR2")}
 	// resp1, err := channalClient.Execute(channel.Request{ChaincodeID: "fabcar", Fcn: "QueryCar", Args: createCarArgs}, channel.WithRetry(retry.DefaultChannelOpts))
 	if err != nil {
-		// log.Println("ExeChaincode:", err)
+		// glog.Info("ExeChaincode:", err)
 		return "", err
 	}
 	transHex := string(resp1.TransactionID)
@@ -87,7 +88,7 @@ func (client *FabricClient) exeChaincode(chainCode string, chainCodeFunc string,
 
 	// timestamp := int64(channelHeader.Timestamp.Seconds)*1000 + int64(channelHeader.Timestamp.Nanos)/1000
 
-	// log.Println(string(resp1.Payload))
+	// glog.Info(string(resp1.Payload))
 	return transHex, err
 }
 
@@ -95,11 +96,11 @@ func (client *FabricClient) FindTranCountByTransID(transHex string) int32 {
 	// lclient, _ := ledger.New(ctx)
 	pbtran, err := client.ledgerclient.QueryTransaction(fab.TransactionID(transHex))
 	if err != nil {
-		log.Printf("transid:%s failed, err:%s", transHex, err)
+		glog.Info("transid:%s failed, err:%s", transHex, err)
 		return 0
 	}
 
-	// log.Printf(">>>###number:%d", pbtran.GetValidationCode())
+	// glog.Info(">>>###number:%d", pbtran.GetValidationCode())
 	return pbtran.GetValidationCode()
 }
 
@@ -110,7 +111,7 @@ func (client *FabricClient) GetTranCountByTransID(transHex string) (int64 /* 毫
 	}
 	pbtran, err := client.ledgerclient.QueryTransaction(fab.TransactionID(transHex))
 	if err != nil {
-		log.Printf("QueryTransaction transid:%s failed, err:%s", transHex, err)
+		glog.Info("QueryTransaction transid:%s failed, err:%s", transHex, err)
 		return -1, -1
 	}
 
@@ -127,12 +128,12 @@ func (client *FabricClient) GetTranCountByTransID(transHex string) (int64 /* 毫
 
 	// 交易上块时间单位毫秒
 	timestamp := int64(channelHeader.Timestamp.Seconds)*1000 + int64(channelHeader.Timestamp.Nanos)/1000000
-	// log.Printf("---test,hex:%s, time:%s, calc time:%d.", transHex, channelHeader.Timestamp, timestamp)
+	// glog.Info("---test,hex:%s, time:%s, calc time:%d.", transHex, channelHeader.Timestamp, timestamp)
 
 	// block
 	pbblock, err := client.ledgerclient.QueryBlockByTxID(fab.TransactionID(transHex))
 	if err != nil {
-		log.Printf("QueryBlockByTxID transid:%s failed, err:%s", transHex, err)
+		glog.Info("QueryBlockByTxID transid:%s failed, err:%s", transHex, err)
 		return -1, -1
 	}
 	number := int64(pbblock.GetHeader().GetNumber())
@@ -143,7 +144,7 @@ func (client *FabricClient) GetTranCountByBlockNumber(blockNumber int64) (int64,
 	// lclient, _ := ledger.New(ctx)
 	pbblock, err := client.ledgerclient.QueryBlock(uint64(blockNumber))
 	if err != nil {
-		log.Printf("blocknumber:%d failed, err:%s", blockNumber, err)
+		glog.Info("blocknumber:%d failed, err:%s", blockNumber, err)
 		return -1, -1
 	}
 
@@ -159,6 +160,6 @@ func (client *FabricClient) GetTranCountByBlockNumber(blockNumber int64) (int64,
 	proto.Unmarshal(payload.GetData(), &transaction)
 	timestamp := int64(channelHeader.Timestamp.Seconds)*1000 + int64(channelHeader.Timestamp.Nanos)/1000000
 
-	// log.Printf(">>>###timestamp:%d\n", timestamp)
+	// glog.Info(">>>###timestamp:%d\n", timestamp)
 	return timestamp, int64(len(transaction.GetActions()))
 }

@@ -9,9 +9,9 @@ import (
 	// "blcokbenchmark/src/mysql"
 	"blcokbenchmark/src/redis"
 	"blcokbenchmark/src/utils"
-	"log"
 	"net"
 	"time"
+	"flag"
 
 	// ctx "context"
 	"github.com/spf13/viper"
@@ -21,6 +21,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+	"github.com/golang/glog"
 )
 
 // 全部变量
@@ -54,7 +55,7 @@ func (s BlockWorkLoadService) SendWorkLoad(c context.Context, req *pb.WorkLoadRe
 	ret := new(pb.WorkLoadResponse)
 	ret.Message = "hello, " + req.BlockchainName
 
-	// log.Printf("########name:%s, id:%s, func:%s", req.BlockchainName, req.ChaincodeID, req.ChaincodeFunc)
+	// glog.Info("########name:%s, id:%s, func:%s", req.BlockchainName, req.ChaincodeID, req.ChaincodeFunc)
 	// go s.endpoint.dbconn.InsertBlockNameInfosRecord(req.BlockchainName, req.ChaincodeID)
 	if s.Fabric_endpoint != nil && req.BlockchainName == s.Fabric_endpoint.blockname {
 		s.Fabric_endpoint.EndpointWorkLoad(req.ChaincodeID, req.ChaincodeFunc, req.ClientUUID, req.Params)
@@ -63,7 +64,7 @@ func (s BlockWorkLoadService) SendWorkLoad(c context.Context, req *pb.WorkLoadRe
 	} else if s.Meepo_endpoint != nil && req.BlockchainName == s.Meepo_endpoint.blockname {
 		s.Meepo_endpoint.EndpointWorkLoad(req.ChaincodeID, req.ChaincodeFunc, req.ClientUUID, req.Params)
 	} else {
-		log.Printf("now not support blockchain [%s].\n", req.BlockchainName)
+		glog.Info("now not support blockchain [%s].\n", req.BlockchainName)
 	}
 
 	return ret, nil
@@ -77,7 +78,7 @@ func (s BlockWorkLoadService) SendWorkLoad(c context.Context, req *pb.WorkLoadRe
 // FABRIC
 func EndpointInitFabric(nodeurl, blockname string) *FabricEndpoint {
 	endpoint := &FabricEndpoint{}
-	log.Println("fabric initsdk")
+	glog.Info("fabric initsdk")
 	//初始化sdk
 	sdk := fabricrpc.InitSDK()
 	client := fabricrpc.InitFabricClient(sdk)
@@ -95,7 +96,7 @@ func (endpoint *FabricEndpoint) EndpointUpdate() {
 		if timestamp_hex != -1 {
 			// end_time := time.Now() //
 			end_time := time.UnixMilli(timestamp_hex)
-			// log.Printf("---->fabric trans hex:%s, timestamp_hex:%d, time:%v.\n", hex, timestamp_hex, end_time)
+			// glog.Info("---->fabric trans hex:%s, timestamp_hex:%d, time:%v.\n", hex, timestamp_hex, end_time)
 			redis.Redisclient.SetBlockUUIDSuccess(endpoint.blockname, hex, block_height, end_time)
 		} else {
 			redis.Redisclient.IncrBlockUUID(endpoint.blockname, hex)
@@ -108,8 +109,8 @@ func (endpoint *FabricEndpoint) EndpointWorkLoad(ChaincodeID, ChaincodeFunc, Cli
 		start_time := time.Now() // 秒
 		hex := endpoint.fabric_client.ExecContract(ChaincodeID, ChaincodeFunc, Params)
 		if len(hex) > 0 {
-			// log.Printf("---->hex:%s\n", hex)
-			// log.Printf("---->fabric trans hex:%s, time:%v.\n", hex, start_time.UnixMilli())
+			// glog.Info("---->hex:%s\n", hex)
+			// glog.Info("---->fabric trans hex:%s, time:%v.\n", hex, start_time.UnixMilli())
 			redis.Redisclient.SetBlockQPS(endpoint.blockname, ChaincodeID, hex, ClientUUID, start_time, start_time)
 		}
 	}()
@@ -133,7 +134,7 @@ func (endpoint *ETHEndpoint) EndpointUpdate() {
 		//  TODO 该时间返回为秒，系统设计单位为毫秒需要改正
 		timestamp_hex, block_height := endpoint.rpcClient.GetTranCountByTransID(hex)
 		if timestamp_hex != -1 {
-			// log.Printf("--->EndpointUpdate hex:%s, timestampe:%d.\n", hex, timestamp_hex)
+			// glog.Info("--->EndpointUpdate hex:%s, timestampe:%d.\n", hex, timestamp_hex)
 			// end_time := time.Now() //
 			end_time := time.UnixMilli(timestamp_hex)
 			redis.Redisclient.SetBlockUUIDSuccess(endpoint.blockname, hex, int64(block_height), end_time)
@@ -148,8 +149,8 @@ func (endpoint *ETHEndpoint) EndpointWorkLoad(ChaincodeID, ChaincodeFunc, Client
 		start_time := time.Now()
 		hex := endpoint.rpcClient.ExecContract(ChaincodeID, ChaincodeFunc, Params)
 		if len(hex) > 0 {
-			// log.Printf("--->EndpointWorkLoad hex:%s, start_time:%v, ChaincodeID:%s, ChaincodeFunc:%s, Params:%v.\n", hex, start_time, ChaincodeID, ChaincodeFunc, Params)
-			// log.Printf("---->eth trans hex:%s, time:%v.\n", hex, start_time.UnixMilli())
+			// glog.Info("--->EndpointWorkLoad hex:%s, start_time:%v, ChaincodeID:%s, ChaincodeFunc:%s, Params:%v.\n", hex, start_time, ChaincodeID, ChaincodeFunc, Params)
+			// glog.Info("---->eth trans hex:%s, time:%v.\n", hex, start_time.UnixMilli())
 			redis.Redisclient.SetBlockQPS(endpoint.blockname, ChaincodeID, hex, ClientUUID, start_time, start_time)
 		}
 	}()
@@ -161,7 +162,7 @@ func EndpointInitMeepo(nodeurl, blockname string) *MeepoEndpoint {
 
 	rpcClient := meeporpc.NewRPCClient(nodeurl, blockname)
 	if rpcClient == nil {
-		log.Fatal("conn failed.")
+		glog.Exit("conn failed.")
 	}
 
 	endpoint.blockname = blockname
@@ -176,7 +177,7 @@ func (endpoint *MeepoEndpoint) EndpointUpdate() {
 		//  TODO 该时间返回为秒，系统设计单位为毫秒需要改正
 		timestamp_hex, block_height := endpoint.rpcClient.GetTranCountByTransID(hex)
 		if timestamp_hex != -1 {
-			// log.Printf("--->EndpointUpdate hex:%s, timestampe:%d.\n", hex, timestamp_hex)
+			// glog.Info("--->EndpointUpdate hex:%s, timestampe:%d.\n", hex, timestamp_hex)
 			// end_time := time.Now() //
 			end_time := time.UnixMilli(timestamp_hex)
 			redis.Redisclient.SetBlockUUIDSuccess(endpoint.blockname, hex, int64(block_height), end_time)
@@ -191,8 +192,8 @@ func (endpoint *MeepoEndpoint) EndpointWorkLoad(ChaincodeID, ChaincodeFunc, Clie
 		start_time := time.Now()
 		hex := endpoint.rpcClient.ExecContract(ChaincodeID, ChaincodeFunc, Params)
 		if len(hex) > 0 {
-			// log.Printf("--->EndpointWorkLoad hex:%s, start_time:%v, ChaincodeID:%s, ChaincodeFunc:%s, Params:%v.\n", hex, start_time, ChaincodeID, ChaincodeFunc, Params)
-			// log.Printf("---->eth trans hex:%s, time:%v.\n", hex, start_time.UnixMilli())
+			// glog.Info("--->EndpointWorkLoad hex:%s, start_time:%v, ChaincodeID:%s, ChaincodeFunc:%s, Params:%v.\n", hex, start_time, ChaincodeID, ChaincodeFunc, Params)
+			// glog.Info("---->eth trans hex:%s, time:%v.\n", hex, start_time.UnixMilli())
 			redis.Redisclient.SetBlockQPS(endpoint.blockname, ChaincodeID, hex, ClientUUID, start_time, start_time)
 		}
 	}()
@@ -200,7 +201,12 @@ func (endpoint *MeepoEndpoint) EndpointWorkLoad(ChaincodeID, ChaincodeFunc, Clie
 
 // MAIN
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	// log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	//初始化命令行参数
+	flag.Parse()
+	//退出时调用，确保日志写入文件中
+	defer glog.Flush()
 
 	serverUUID = utils.GetLocalUUID()
 
@@ -210,7 +216,7 @@ func main() {
 	config.SetConfigType("json")
 
 	if err := config.ReadInConfig(); err != nil {
-		log.Fatal(">>>>error, ", err)
+		glog.Exit(">>>>error, ", err)
 	}
 
 	//   初始化redis
@@ -242,7 +248,7 @@ func main() {
 	for _, value := range nodes.([]interface{}) {
 		node := value.(map[string]interface{})
 
-		log.Printf("############[%s]\n", node["name"])
+		glog.Info("############[%s]\n", node["name"])
 		name := node["name"].(string)
 		nodeurl := node["nodeurl"].(string)
 		is_open := node["open"].(bool)
@@ -254,7 +260,7 @@ func main() {
 
 		if name == "Fabric" {
 			fabric_node := EndpointInitFabric(nodeurl, name)
-			log.Printf("##### [%s] Init Successed!\n", name)
+			glog.Info("##### [%s] Init Successed!\n", name)
 			block_service.Fabric_endpoint = fabric_node
 			go func() {
 				time.Sleep(5 * time.Second)
@@ -265,7 +271,7 @@ func main() {
 		} else if name == "ETHPersonal" {
 			eth_node := EndpointInitETH(nodeurl, name)
 			block_service.Eth_endpoint = eth_node
-			log.Printf("##### [%s] Init Successed!\n", name)
+			glog.Info("##### [%s] Init Successed!\n", name)
 			go func() {
 				time.Sleep(5 * time.Second)
 				for range ticker.C {
@@ -275,7 +281,7 @@ func main() {
 		} else if name == "MeepoPersonal" {
 			meepo_node := EndpointInitMeepo(nodeurl, name)
 			block_service.Meepo_endpoint = meepo_node
-			log.Printf("##### [%s] Init Successed!\n", name)
+			glog.Info("##### [%s] Init Successed!\n", name)
 			go func() {
 				time.Sleep(5 * time.Second)
 				for range ticker.C {
@@ -284,7 +290,7 @@ func main() {
 			}()
 		}
 	}
-	log.Printf("### UUID[%s]\n", serverUUID)
+	glog.Info("### UUID[%s]\n", serverUUID)
 
 	//  定时更新redis数据
 	go func() {

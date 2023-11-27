@@ -78,7 +78,7 @@ server编译：
 ```
 server运行：
 ```shell
-    ./server
+    ./server -log_dir=log
 ```
 > 需要conf目录和server二进制才能正常运行
 
@@ -91,7 +91,7 @@ client编译：
 ```
 client运行：
 ```shell
-    ./client
+    ./client -log_dir=log
 ```
 > 需要config_client.json文件和client二进制才能运行
 

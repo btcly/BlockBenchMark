@@ -16,7 +16,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/big"
 	"math/rand"
 	"net/http"
@@ -31,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/golang/glog"
 )
 
 // TODO 减少日志的打印
@@ -62,7 +62,7 @@ var (
 func NewRPCClient(nodeUrl, blockName string) *RPCClient {
 	eth_client, err := ethclient.Dial(nodeUrl)
 	if err != nil {
-		log.Printf("conn nodeurl:%s, err:%s.\n", nodeUrl, err)
+		glog.Info("conn nodeurl:%s, err:%s.\n", nodeUrl, err)
 		return nil
 	}
 
@@ -98,7 +98,7 @@ func stringToPrivateKey(privateKeyStr string) (*ecdsa.PrivateKey, error) {
 	// 解码十六进制字符串
 	privateKeyBytes, err := hex.DecodeString(privateKeyHex)
 	if err != nil {
-		log.Printf("DecodeString privatekey:%s, err:%s.\n", privateKeyHex, err)
+		glog.Info("DecodeString privatekey:%s, err:%s.\n", privateKeyHex, err)
 		return nil, err
 	}
 
@@ -114,14 +114,14 @@ func loadKeystore(client *RPCClient, blockName string) {
 	var files []string
 	contractHexs := []ContractTrans{}
 	err := filepath.Walk(gkeystore_path, func(path string, info os.FileInfo, err error) error {
-		// log.Printf(":---->path:%s.\n", path)
+		// glog.Info(":---->path:%s.\n", path)
 		if path != gkeystore_path {
 			files = append(files, path)
 		}
 		return nil
 	})
 	if err != nil {
-		log.Printf("load keystore file failed, err:%s.\n", err)
+		glog.Info("load keystore file failed, err:%s.\n", err)
 		return
 	}
 	for _, file := range files {
@@ -129,22 +129,22 @@ func loadKeystore(client *RPCClient, blockName string) {
 		//  该路径是二进制执行的相对位置
 		keyJson, err := ioutil.ReadFile(file)
 		if err != nil {
-			log.Printf("read file:%s, failed, err:%s.\n", file, err)
+			glog.Info("read file:%s, failed, err:%s.\n", file, err)
 			continue
 		}
 
 		key, err := keystore.DecryptKey(keyJson, gkeystore_passwd)
 		if err != nil {
-			log.Printf("parse json failed, err:%s.\n", err)
+			glog.Info("parse json failed, err:%s.\n", err)
 			continue
 		}
 
-		// log.Printf("keystore key:%v.\n", key)
+		// glog.Info("keystore key:%v.\n", key)
 
 		publicKey := key.PrivateKey.Public()
 		publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 		if !ok {
-			log.Println("error casting public key to ECDSA")
+			glog.Info("error casting public key to ECDSA")
 			continue
 		}
 
@@ -164,7 +164,7 @@ func loadKeystore(client *RPCClient, blockName string) {
 
 		gasPrice, err := client.ethClient.SuggestGasPrice(context.Background())
 		if err != nil {
-			log.Println("suggest gas price, err:", err)
+			glog.Info("suggest gas price, err:", err)
 			continue
 		}
 
@@ -215,7 +215,7 @@ func loadKeystore(client *RPCClient, blockName string) {
 		time.Sleep(2)
 	}
 
-	log.Printf("loading Meepo contract Successed.\n")
+	glog.Info("loading Meepo contract Successed.\n")
 
 }
 
@@ -223,7 +223,7 @@ func loadKeystore(client *RPCClient, blockName string) {
 func (client *RPCClient) ExecContract(ChaincodeID, ChaincodeFunc string, Params []string) string {
 	contractaddr, fromaddr, _ := redis.Redisclient.GetRandomFieldContract(client.blockName, ChaincodeID)
 	if contractaddr == "" || fromaddr == "" {
-		log.Printf("GetRandomFieldContract not found address.\n")
+		glog.Info("GetRandomFieldContract not found address.\n")
 		return ""
 	}
 	var hex = ""
@@ -235,7 +235,7 @@ func (client *RPCClient) ExecContract(ChaincodeID, ChaincodeFunc string, Params 
 	} else if ChaincodeID == "smallbank" {
 		hex = client.ContractTransaction(fromaddr, contractaddr, ChaincodeFunc, smallbank.SmallbankABI, Params, ggasLimit, ggasPrice)
 	} else {
-		log.Printf("not support chaincideid [%s], please check.\n", ChaincodeID)
+		glog.Info("not support chaincideid [%s], please check.\n", ChaincodeID)
 	}
 	return hex
 }
@@ -245,14 +245,14 @@ func (client *RPCClient) ExecContract(ChaincodeID, ChaincodeFunc string, Params 
 func (client *RPCClient) DoPost() {
 	var networkid string
 	client.rpcClient.Call(&networkid, "net_version")
-	log.Println("--->networkid:", networkid)
+	glog.Info("--->networkid:", networkid)
 
 	var proto_version string
 	client.rpcClient.Call(&proto_version, "eth_protocolVersion")
-	log.Println("--->proto_version:", proto_version)
+	glog.Info("--->proto_version:", proto_version)
 
 	if networkid == "" && proto_version == "" {
-		log.Fatalf("client failed, please check.\n")
+		glog.Exit("client failed, please check.\n")
 	}
 }
 
@@ -261,7 +261,7 @@ func (client *RPCClient) GetTranCountByTransID(transHex string) (int64, int64) {
 		transHex,
 	})
 	if result == nil {
-		log.Println("getbalance error!")
+		glog.Info("getbalance error!")
 		return -1, -1
 	}
 	ret_trans := result.(map[string]interface{})
@@ -315,7 +315,7 @@ func (client *RPCClient) FindTranCountByTransID(transHex string) bool {
 		transHex,
 	})
 	if result == nil {
-		log.Println("getbalance error!")
+		glog.Info("getbalance error!")
 		return false
 	}
 	ret_trans := result.(map[string]interface{})
@@ -330,7 +330,7 @@ func (client *RPCClient) GetBlance(fromAddress string) {
 		fromAddress,
 	})
 	if result == nil {
-		log.Println("getbalance error!")
+		glog.Info("getbalance error!")
 		return
 	}
 	res_str := result.(string)
@@ -338,7 +338,7 @@ func (client *RPCClient) GetBlance(fromAddress string) {
 	balance, _ = balance.SetString(res_str[2:], 16)
 	basevalue := big.NewInt(1000000000000000000)
 	balance = balance.Div(balance, basevalue)
-	log.Printf("fromAddress:%s, balance:%d ETH.\n", fromAddress, balance)
+	glog.Info("fromAddress:%s, balance:%d ETH.\n", fromAddress, balance)
 }
 
 func (client *RPCClient) DeployContractTransaction(fromAddress, contractByteCode string, gaslimit uint64, gasPrice *big.Int) string {
@@ -348,7 +348,7 @@ func (client *RPCClient) DeployContractTransaction(fromAddress, contractByteCode
 		gkeystore_passwd,
 		nil,
 	})
-	// log.Println("Response:", result)
+	// glog.Info("Response:", result)
 	result = client.JsonRPCMapCore("eth_sendTransaction", map[string]interface{}{
 
 		"from":     fromAddress,
@@ -358,7 +358,7 @@ func (client *RPCClient) DeployContractTransaction(fromAddress, contractByteCode
 		"gasPrice": fmt.Sprintf("0x%x", gasPrice), // 10000000000000
 	})
 
-	// log.Println("Response:", result)
+	// glog.Info("Response:", result)
 	if result == nil {
 		return ""
 	}
@@ -395,7 +395,7 @@ func (client *RPCClient) ContractTransaction(fromAddress, contractAddress, funcN
 		gkeystore_passwd,
 		nil,
 	})
-	// log.Println("Response:", result)
+	// glog.Info("Response:", result)
 	result = client.JsonRPCMapCore("eth_sendTransaction", map[string]interface{}{
 
 		"from":     fromAddress,
@@ -406,7 +406,7 @@ func (client *RPCClient) ContractTransaction(fromAddress, contractAddress, funcN
 		"gasPrice": fmt.Sprintf("0x%x", gasPrice), // 10000000000000
 	})
 
-	// log.Println("Response:", result)
+	// glog.Info("Response:", result)
 	if result == nil {
 		return ""
 	}
@@ -442,14 +442,14 @@ func (client *RPCClient) JsonRPCMapCore(functionName string, params map[string]i
 	// 序列化 JSON-RPC 请求数据
 	requestBody, err := json.Marshal(payload)
 	if err != nil {
-		log.Println("Error encoding JSON:", err)
+		glog.Info("Error encoding JSON:", err)
 		return nil
 	}
 
 	// 发送 HTTP POST 请求
 	resp, err := http.Post(client.nodeUrl, "application/json", bytes.NewBuffer(requestBody))
 	if err != nil {
-		log.Println("Error sending HTTP request:", err)
+		glog.Info("Error sending HTTP request:", err)
 		return nil
 	}
 	defer resp.Body.Close()
@@ -458,7 +458,7 @@ func (client *RPCClient) JsonRPCMapCore(functionName string, params map[string]i
 	var result map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	if err != nil {
-		log.Println("Error decoding JSON response:", err)
+		glog.Info("Error decoding JSON response:", err)
 		return nil
 	}
 
@@ -466,7 +466,7 @@ func (client *RPCClient) JsonRPCMapCore(functionName string, params map[string]i
 	if exists {
 		return value
 	} else {
-		log.Println("JsonRpc exec error, ", result)
+		glog.Info("JsonRpc exec error, ", result)
 		return nil
 	}
 }
@@ -483,14 +483,14 @@ func (client *RPCClient) JsonRPCListCore(functionName string, params []interface
 	// 序列化 JSON-RPC 请求数据
 	requestBody, err := json.Marshal(payload)
 	if err != nil {
-		log.Println("Error encoding JSON:", err)
+		glog.Info("Error encoding JSON:", err)
 		return nil
 	}
 
 	// 发送 HTTP POST 请求
 	resp, err := http.Post(client.nodeUrl, "application/json", bytes.NewBuffer(requestBody))
 	if err != nil {
-		log.Println("Error sending HTTP request:", err)
+		glog.Info("Error sending HTTP request:", err)
 		return nil
 	}
 	defer resp.Body.Close()
@@ -499,7 +499,7 @@ func (client *RPCClient) JsonRPCListCore(functionName string, params []interface
 	var result map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	if err != nil {
-		log.Println("Error decoding JSON response:", err)
+		glog.Info("Error decoding JSON response:", err)
 		return nil
 	}
 
@@ -507,7 +507,7 @@ func (client *RPCClient) JsonRPCListCore(functionName string, params []interface
 	if exists {
 		return value
 	} else {
-		log.Println("JsonRpc exec error, ", result)
+		glog.Info("JsonRpc exec error, ", result)
 		return nil
 	}
 
