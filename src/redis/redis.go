@@ -3,6 +3,8 @@ package redis
 import (
 	mysql "blcokbenchmark/src/mysql"
 	"context"
+	"fmt"
+
 	// "log"
 	"math/rand"
 	"strconv"
@@ -58,7 +60,7 @@ func (redisIns *RedisInstanceInfo) SetBlockQPS(blockName, chainCodeID, trans_hex
 	// 此数据暂时存放到redis上，key值和数据库字段名保持一致
 	redisIns.RedisClient.HMSet(redisIns.Ctx, redis_key, "trans_hex", trans_hex, "server_uuid", redisIns.ServerUUID, "client_uuid", client_uuid, "block_name", blockName,
 		"chaincodeID", chainCodeID, "start_time", startTime.UnixMilli(), "end_time", endTime.UnixMilli(), "valid", -1)
-	// glog.Info("--->redis blockname:%s, hex:%s.\n", blockName, trans_hex)
+	// glog.Info(fmt.Sprintf("--->redis blockname:%s, hex:%s.\n", blockName, trans_hex)
 }
 
 // 查找当前服务端上，运行指定区块链的tranhex
@@ -69,7 +71,7 @@ func (redisIns *RedisInstanceInfo) GetBlockTransInfo(block_name string) []string
 	uuid_redis_key := createRedisPrex(block_name, redisIns.ServerUUID)
 	result, _ := redisIns.RedisClient.HGetAll(redisIns.Ctx, uuid_redis_key).Result()
 	for redis_key, value := range result {
-		// glog.Info("---->redis:%s, value:%s, %s.\n", redis_key, value, redis_key[:len(block_name)])
+		// glog.Info(fmt.Sprintf("---->redis:%s, value:%s, %s.\n", redis_key, value, redis_key[:len(block_name)])
 		if value != "0" && redis_key[:len(block_name)] == block_name {
 			not_in_block = append(not_in_block, redis_key[len(block_name)+1:])
 		}
@@ -108,17 +110,17 @@ func (redisIns *RedisInstanceInfo) SyncRedisToSQL() {
 		uuid_redis_key := createRedisPrex(key, redisIns.ServerUUID)
 		//  遍历当前区块下的hex
 		result, _ := redisIns.RedisClient.HGetAll(redisIns.Ctx, uuid_redis_key).Result()
-		// glog.Info("-->read redis key:%s, count:%d.\n", uuid_redis_key, len(result))
+		// glog.Info(fmt.Sprintf("-->read redis key:%s, count:%d.\n", uuid_redis_key, len(result))
 		for redis_key, value := range result {
 			value_cnt, _ := strconv.ParseInt(value, 10, 64)
 			//  该值默认为1，[1,500)这个不认为是失败，需要待检查
 			//  TODO暂时用超时代替，后续修改为检测结果
 			if value_cnt >= 1 && value_cnt < 100 {
-				// glog.Info("---->redis:%s, value:%s.\n", redis_key, value)
+				// glog.Info(fmt.Sprintf("---->redis:%s, value:%s.\n", redis_key, value)
 				continue
 			}
 			tran_result, _ := redisIns.RedisClient.HGetAll(redisIns.Ctx, redis_key).Result()
-			// glog.Info("---->redis key:%s, result:%s.\n", redis_key, tran_result)
+			// glog.Info(fmt.Sprintf("---->redis key:%s, result:%s.\n", redis_key, tran_result)
 
 			// 从redis中读取暂时存放的数据
 			trans_hex := tran_result["trans_hex"]
@@ -135,7 +137,7 @@ func (redisIns *RedisInstanceInfo) SyncRedisToSQL() {
 			if len(tran_result) >= 1 && valid != 0 {
 				redisIns.RedisClient.Unlink(redisIns.Ctx, redis_key)
 				redisIns.RedisClient.HDel(redisIns.Ctx, redisIns.ServerUUID, redis_key)
-				// glog.Info("--->redis HDEL uuid:%s, hex:%s, value:%s-%d, tran_result:%s.\n", redisIns.ServerUUID, redis_key, value, value_cnt, tran_result)
+				// glog.Info(fmt.Sprintf("--->redis HDEL uuid:%s, hex:%s, value:%s-%d, tran_result:%s.\n", redisIns.ServerUUID, redis_key, value, value_cnt, tran_result)
 
 				data = append(data, mysql.TableInfo{
 					Tran_hex:     trans_hex,
@@ -152,14 +154,14 @@ func (redisIns *RedisInstanceInfo) SyncRedisToSQL() {
 				})
 			}
 			if len(data) >= 10 {
-				glog.Info("sync count[%d] data to mysql.", len(data))
+				glog.Info(fmt.Sprintf("sync count[%d] data to mysql.", len(data)))
 				mysql.Dbconn.InsertBatchBlockInfos(data)
 				data = data[:0]
 			}
 		}
 	}
 	if len(data) >= 1 {
-		glog.Info("sync count[%d] data to mysql.", len(data))
+		glog.Info(fmt.Sprintf("sync count[%d] data to mysql.", len(data)))
 		mysql.Dbconn.InsertBatchBlockInfos(data)
 		data = data[:0]
 	}
@@ -201,7 +203,7 @@ func (redisIns *RedisInstanceInfo) GetNonceFromRedis(blockName, fromaddr string)
 		if trylock.Val() {
 			nonce_now := redisIns.RedisClient.HIncrBy(redisIns.Ctx, redis_key, "nonce", 1)
 			redisIns.RedisClient.Del(redisIns.Ctx, redis_lock_key)
-			// glog.Info("--->get address:%s, nonce:%s.\n", redis_key, nonce_now.Err())
+			// glog.Info(fmt.Sprintf("--->get address:%s, nonce:%s.\n", redis_key, nonce_now.Err())
 			if nonce_now.Err() == nil {
 				nonce := nonce_now.Val()
 				return nonce
@@ -242,12 +244,12 @@ func (redisIns *RedisInstanceInfo) SetContracAddresstToRedis(blockName, contract
 // 			contractAddress := common.HexToAddress(contractaddr)
 // 			// 查询合约代码
 // 			code, _ := ethClient.CodeAt(context.Background(), contractAddress, nil)
-// 			glog.Info("--->redis_key:%s, fromaddr:%s, contractaddr:%s, code:%s.\n", redis_key, fromaddr, contractaddr, code)
+// 			glog.Info(fmt.Sprintf("--->redis_key:%s, fromaddr:%s, contractaddr:%s, code:%s.\n", redis_key, fromaddr, contractaddr, code)
 // 			if len(code) <= 0 {
 // 				redisIns.RedisClient.HDel(redisIns.Ctx, redis_key, fromaddr)
 // 			}
 
-// 			glog.Info("---->check address fromaddr:%s, contract:%s.\n", fromaddr, contractaddr)
+// 			glog.Info(fmt.Sprintf("---->check address fromaddr:%s, contract:%s.\n", fromaddr, contractaddr)
 // 			redisIns.RedisClient.Del(redisIns.Ctx, addr_rediskey)
 // 		}
 // 	}
@@ -272,10 +274,10 @@ func (redisIns *RedisInstanceInfo) GetRandomFieldContract(blockName, contractNam
 
 	// 获取所有字段名
 	fields, err := redisIns.RedisClient.HKeys(redisIns.Ctx, redis_key).Result()
-	// glog.Info("--->redis_key:%s, fields:%s.\n", redis_key, fields)
+	// glog.Info(fmt.Sprintf("--->redis_key:%s, fields:%s.\n", redis_key, fields)
 
 	if err != nil || len(fields) <= 0 {
-		glog.Info("GetRandomFieldContract getkeys err, redis_key:%s.\n", redis_key)
+		glog.Info(fmt.Sprintf("GetRandomFieldContract getkeys err, redis_key:%s.\n", redis_key))
 		return "", "", err
 	}
 
@@ -287,7 +289,7 @@ func (redisIns *RedisInstanceInfo) GetRandomFieldContract(blockName, contractNam
 	// 获取随机字段的值
 	randomContractValue, err := redisIns.RedisClient.HGet(redisIns.Ctx, redis_key, randomfromaddr).Result()
 	if err != nil || randomContractValue == "" {
-		glog.Info("GetRandomFieldContract getkeys err, redis_key:%s, filed:%s.\n", redis_key, randomfromaddr)
+		glog.Info(fmt.Sprintf("GetRandomFieldContract getkeys err, redis_key:%s, filed:%s.\n", redis_key, randomfromaddr))
 		return "", "", err
 	}
 

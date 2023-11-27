@@ -28,14 +28,12 @@
             "name" : "ETHPersonal", # 名称，server和client保持一致
             "nodeurl" : "ws://192.168.93.137:8546", # 区块链的地址
             "conf":"", # 配置信息
-            "chainid":"1234", # chainid
             "open" : true # 是否开启
         },
         {
             "name" : "MeepoPersonal",
             "nodeurl" : "http://192.168.93.141:8545",
             "conf":"",
-            "chainid":"1234",
             "open" : true
         },
         {

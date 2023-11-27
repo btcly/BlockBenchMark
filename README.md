@@ -83,6 +83,18 @@ server运行：
 > 需要conf目录和server二进制才能正常运行
 
 Server运行需要读取程序运行配置和区块链相关配置，相关配置具体讲解请见[此处](./src/server/conf/readme.md)。
+
+再搭建完Fabric/ETH/Meepo，如果使用域名访问的话，一般需要更改域名和IP的映射，请修改修改文件/etc/hosts
+```shell
+192.168.93.156 peer0.org1.example.com
+192.168.93.146 peer1.org1.example.com
+192.168.93.147 peer0.org2.example.com
+192.168.93.148 peer1.org2.example.com
+192.168.93.153 orderer1.example.com
+192.168.93.154 orderer2.example.com
+192.168.93.155 orderer3.example.com
+```
+
 ## Client
 client编译：
 ```shell

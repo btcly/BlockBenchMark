@@ -5,8 +5,8 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/jmoiron/sqlx"
 	"github.com/golang/glog"
+	"github.com/jmoiron/sqlx"
 )
 
 // 数据库的实例信息
@@ -52,22 +52,22 @@ func InitMysql() {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=%s&loc=Local", Mysql_endpoint.UserName, Mysql_endpoint.Password, Mysql_endpoint.IpAddrees, Mysql_endpoint.Port, Mysql_endpoint.Charset)
 	Db, err := sqlx.Open("mysql", dsn)
 	if err != nil {
-		glog.Info("mysql connect failed, detail is [%v]", err.Error())
+		glog.Info(fmt.Sprintf("mysql connect failed, detail is [%v]", err.Error()))
 	}
 	if err := Db.Ping(); err != nil {
-		glog.Info("unable to reach database: %v", err)
+		glog.Info(fmt.Sprintf("unable to reach database: %v", err))
 	}
 
 	createDBSQL := "CREATE DATABASE IF NOT EXISTS " + Mysql_endpoint.DbName
 	_, err = Db.Exec(createDBSQL)
 	if err != nil {
-		glog.Info("CREATE database err, %v", err)
+		glog.Info(fmt.Sprintf("CREATE database err, %v", err))
 	}
 
 	dsn = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&loc=Local", Mysql_endpoint.UserName, Mysql_endpoint.Password, Mysql_endpoint.IpAddrees, Mysql_endpoint.Port, Mysql_endpoint.DbName, Mysql_endpoint.Charset)
 	Db, err = sqlx.Open("mysql", dsn)
 	if err != nil {
-		glog.Info("mysql connect failed, detail is [%v]", err.Error())
+		glog.Info(fmt.Sprintf("mysql connect failed, detail is [%v]", err.Error()))
 	}
 	useDBSQL := "USE " + Mysql_endpoint.DbName
 	_, err = Db.Exec(useDBSQL)
@@ -89,8 +89,8 @@ func InitMysql() {
 	// 如果数据表不在就创建
 	create_table_sql(Db)
 	Dbconn.Db = Db
-	
-	glog.Info("init mysql Success.")
+
+	glog.Info(fmt.Sprintf("init mysql Success."))
 }
 
 func (dbconn *DBConn) CloseMysql() {
@@ -118,10 +118,10 @@ func create_table_sql(Db *sqlx.DB) {
 		"PRIMARY KEY (`id`)" +
 		") ENGINE=InnoDB AUTO_INCREMENT=940892 DEFAULT CHARSET=utf8mb4"
 
-	// glog.Info("---->result sql:[%s].\n", result_sql)
+	// glog.Info(fmt.Sprintf("---->result sql:[%s].\n", result_sql)
 	_, err := Db.Exec(create_sql)
 	if err != nil {
-		glog.Info("mysql CreateBlockTables failed, sql is [%v], err:%s", create_sql, err)
+		glog.Info(fmt.Sprintf("mysql CreateBlockTables failed, sql is [%v], err:%s", create_sql, err))
 	}
 }
 
@@ -157,8 +157,8 @@ func (dbconn *DBConn) InsertBatchBlockInfos(data []TableInfo) {
 
 	_, err := dbconn.Db.Exec(sqlStr, vals...) // vals...: 解构
 	if err != nil {
-		glog.Info("sqlStr:", sqlStr)
-		glog.Info("vals: ", vals)
-		glog.Info("mysql inert err: ", err)
+		glog.Info(fmt.Sprintf("sqlStr:", sqlStr))
+		glog.Info(fmt.Sprintf("vals: ", vals))
+		glog.Info(fmt.Sprintf("mysql inert err: ", err))
 	}
 }

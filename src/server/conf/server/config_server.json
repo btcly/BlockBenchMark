@@ -20,21 +20,19 @@
             "name" : "ETHPersonal",
             "nodeurl" : "ws://192.168.93.137:8546",
             "conf":"",
-            "chainid":"1234",
-            "open" : true
+            "open" : false
         },
         {
             "name" : "MeepoPersonal",
             "nodeurl" : "http://192.168.93.141:8545",
             "conf":"",
-            "chainid":"1234",
             "open" : true
         },
         {
             "name" : "Fabric",
             "nodeurl" : "",
             "conf":"",
-            "open" : true
+            "open" : false
         }
     ]
 }

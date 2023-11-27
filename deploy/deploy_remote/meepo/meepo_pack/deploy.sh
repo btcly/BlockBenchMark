@@ -3,7 +3,7 @@ RUN_PATH=`pwd`
 TARGET_SERVICE="meepo.service"
 NODE_EXPORTER_PATH="${RUN_PATH}/node_exporter/"
 
-# compression
+# # compression
 # tar -czvf - openethereum | split -b 50m - openethereum.tar.gz.part.
 # decompression
 # cat openethereum.tar.gz.part* | tar -xzvf -

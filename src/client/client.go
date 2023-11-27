@@ -2,13 +2,13 @@ package main
 
 import (
 	"errors"
-	"log"
+	"flag"
+	"fmt"
 	"math/rand"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
-	"flag"
 
 	// zmq "github.com/pebbe/zmq4"
 	pb "blcokbenchmark/src/protocs"
@@ -19,9 +19,9 @@ import (
 	"google.golang.org/grpc"
 
 	// "google.golang.org/grpc/credentials/insecure"
+	"github.com/golang/glog"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
-	"github.com/golang/glog"
 )
 
 type FuncAndParamslen struct {
@@ -54,11 +54,11 @@ func toStringSlice(actual interface{}) ([]string, error) {
 
 func main() {
 	//初始化命令行参数
-    flag.Parse()
-    //退出时调用，确保日志写入文件中
-    defer glog.Flush()
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	
+	flag.Parse()
+	//退出时调用，确保日志写入文件中
+	defer glog.Flush()
+	// log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	config := viper.New()
 	config.AddConfigPath("./")
 	config.SetConfigName("config_client")
@@ -76,12 +76,13 @@ func main() {
 	uuid := utils.GetLocalUUID()
 
 	server_ip, _ := toStringSlice(config.Get("sever_ip"))
-	glog.Info("server_ip>>>>>", config.Get("sever_ip"))
+	glog.Info(fmt.Sprintf("server_ip>>>>>", config.Get("sever_ip")))
 
 	nodes := config.Get("items")
 	for _, value := range nodes.([]interface{}) {
 		node := value.(map[string]interface{})
-		glog.Info("############[%s]\n############[%s]\n############[%s]\n############[%s]\n############[%s]\n\n", node["type"], node["sever_ip"], node["blockname"], node["qps"], node["open"])
+
+		glog.Info(fmt.Sprintf("load data, ", node["type"], node["sever_ip"], node["blockname"], node["qps"], node["open"]))
 
 		client_endpoint := &ClientEndPoint{}
 		client_endpoint.client_type = node["type"].(string)
@@ -119,7 +120,7 @@ func main() {
 		// 	}
 		// }()
 
-		go perf(client_endpoint)
+		go DataPerf(client_endpoint)
 
 	}
 
@@ -128,12 +129,12 @@ func main() {
 		//此处等待，接受数据开始工作
 	}
 }
-func perf(client_endpoint *ClientEndPoint) {
+func DataPerf(client_endpoint *ClientEndPoint) {
 	if !client_endpoint.open {
-		// glog.Info("############ [%s %s] is close!", client_endpoint.blockname, client_endpoint.chaincode)
+		// glog.Info(fmt.Sprintf("############ [%s %s] is close!", client_endpoint.blockname, client_endpoint.chaincode))
 		return
 	} else {
-		glog.Info("############ [%s %s] is open!", client_endpoint.blockname, client_endpoint.chaincode)
+		glog.Info(fmt.Sprintf("############ [%s %s] is open!", client_endpoint.blockname, client_endpoint.chaincode))
 
 	}
 
@@ -142,7 +143,7 @@ func perf(client_endpoint *ClientEndPoint) {
 
 		addrs = append(addrs, resolver.Address{Addr: value})
 	}
-	glog.Info(">>>>>", addrs)
+	glog.Info(fmt.Sprintf(">>>>>", addrs))
 
 	r := manual.NewBuilderWithScheme("whatever")
 	conn, err := grpc.Dial(
@@ -169,7 +170,7 @@ func perf(client_endpoint *ClientEndPoint) {
 
 	// client := pb.NewWorkLoadClient(conn)
 
-	glog.Info("############ UUID[%s]-QPS[%f] >>>>>>>>>>>!", client_endpoint.uuid, client_endpoint.qps)
+	glog.Info(fmt.Sprintf("############ UUID[%s]-QPS[%f] >>>>>>>>>>>!", client_endpoint.uuid, client_endpoint.qps))
 	ticker := time.NewTicker(time.Microsecond * time.Duration(1000000/client_endpoint.qps))
 	num := 0
 	for {
@@ -184,7 +185,7 @@ func perf(client_endpoint *ClientEndPoint) {
 				for idx := int64(0); idx < client_endpoint.functionParams[func_index].ParamsLen; idx++ {
 					params = append(params, strconv.Itoa(rand.Intn(1000)))
 				}
-				// glog.Info("function:%s, params:%v.\n", client_endpoint.functionParams[func_index].ChaincodeFunc, params)
+				// glog.Info(fmt.Sprintf("function:%s, params:%v.\n", client_endpoint.functionParams[func_index].ChaincodeFunc, params))
 
 				req := pb.WorkLoadRequest{
 					BlockchainName: client_endpoint.blockname,
@@ -195,13 +196,13 @@ func perf(client_endpoint *ClientEndPoint) {
 					Params:         params,
 					// Params: []string{string(test_index), string(test_index), string(test_index)},
 				}
-				// glog.Info("############ [%s]-[%d]-[%s] >>>>>>>>>>>!", client_endpoint.blockname, create_time, req.Params)
+				// glog.Info(fmt.Sprintf("############ [%s]-[%d]-[%s] >>>>>>>>>>>!", client_endpoint.blockname, create_time, req.Params)
 				_, err := client.SendWorkLoad(context.Background(), &req)
 				if err != nil {
-					// glog.Info("client.SendWorkLoad error:", err)
+					glog.Info(fmt.Sprintf("client.SendWorkLoad error:", err))
 					return
 				}
-				// glog.Info("get msg from server:[%v] \n", reply)
+				// glog.Info(fmt.Sprintf("get msg from server:[%v] \n", reply)
 			}()
 			num += 1
 		}

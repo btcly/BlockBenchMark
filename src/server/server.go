@@ -5,23 +5,24 @@ import (
 	"blcokbenchmark/src/block/fabric/fabricrpc"
 	"blcokbenchmark/src/block/meepo/meeporpc"
 	"blcokbenchmark/src/mysql"
+	"fmt"
 
 	// "blcokbenchmark/src/mysql"
 	"blcokbenchmark/src/redis"
 	"blcokbenchmark/src/utils"
+	"flag"
 	"net"
 	"time"
-	"flag"
 
 	// ctx "context"
 	"github.com/spf13/viper"
 
 	pb "blcokbenchmark/src/protocs"
 
+	"github.com/golang/glog"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"github.com/golang/glog"
 )
 
 // 全部变量
@@ -55,7 +56,7 @@ func (s BlockWorkLoadService) SendWorkLoad(c context.Context, req *pb.WorkLoadRe
 	ret := new(pb.WorkLoadResponse)
 	ret.Message = "hello, " + req.BlockchainName
 
-	// glog.Info("########name:%s, id:%s, func:%s", req.BlockchainName, req.ChaincodeID, req.ChaincodeFunc)
+	glog.Info(fmt.Sprintf("SendWorkLoad recv name:%s, id:%s, func:%s", req.BlockchainName, req.ChaincodeID, req.ChaincodeFunc))
 	// go s.endpoint.dbconn.InsertBlockNameInfosRecord(req.BlockchainName, req.ChaincodeID)
 	if s.Fabric_endpoint != nil && req.BlockchainName == s.Fabric_endpoint.blockname {
 		s.Fabric_endpoint.EndpointWorkLoad(req.ChaincodeID, req.ChaincodeFunc, req.ClientUUID, req.Params)
@@ -64,7 +65,7 @@ func (s BlockWorkLoadService) SendWorkLoad(c context.Context, req *pb.WorkLoadRe
 	} else if s.Meepo_endpoint != nil && req.BlockchainName == s.Meepo_endpoint.blockname {
 		s.Meepo_endpoint.EndpointWorkLoad(req.ChaincodeID, req.ChaincodeFunc, req.ClientUUID, req.Params)
 	} else {
-		glog.Info("now not support blockchain [%s].\n", req.BlockchainName)
+		glog.Warning(fmt.Sprintf("SendWorkLoad now not support blockchain [%s].\n", req.BlockchainName))
 	}
 
 	return ret, nil
@@ -78,10 +79,11 @@ func (s BlockWorkLoadService) SendWorkLoad(c context.Context, req *pb.WorkLoadRe
 // FABRIC
 func EndpointInitFabric(nodeurl, blockname string) *FabricEndpoint {
 	endpoint := &FabricEndpoint{}
-	glog.Info("fabric initsdk")
+	glog.Info(fmt.Sprintf("EndpointInitFabric Init SDK."))
 	//初始化sdk
 	sdk := fabricrpc.InitSDK()
 	client := fabricrpc.InitFabricClient(sdk)
+	glog.Info(fmt.Sprintf("EndpointInitFabric Init SDK Successed."))
 
 	endpoint.fabric_client = client
 	endpoint.blockname = blockname
@@ -96,10 +98,11 @@ func (endpoint *FabricEndpoint) EndpointUpdate() {
 		if timestamp_hex != -1 {
 			// end_time := time.Now() //
 			end_time := time.UnixMilli(timestamp_hex)
-			// glog.Info("---->fabric trans hex:%s, timestamp_hex:%d, time:%v.\n", hex, timestamp_hex, end_time)
+			glog.Info(fmt.Sprintf("FabricEndpoint Trans success, trans hex:%s, timestamp_hex:%d, time:%v.\n", hex, timestamp_hex, end_time))
 			redis.Redisclient.SetBlockUUIDSuccess(endpoint.blockname, hex, block_height, end_time)
 		} else {
 			redis.Redisclient.IncrBlockUUID(endpoint.blockname, hex)
+			glog.Info(fmt.Sprintf("FabricEndpoint Trans failed, trans hex:%s.\n", hex))
 		}
 	}
 }
@@ -109,8 +112,8 @@ func (endpoint *FabricEndpoint) EndpointWorkLoad(ChaincodeID, ChaincodeFunc, Cli
 		start_time := time.Now() // 秒
 		hex := endpoint.fabric_client.ExecContract(ChaincodeID, ChaincodeFunc, Params)
 		if len(hex) > 0 {
-			// glog.Info("---->hex:%s\n", hex)
-			// glog.Info("---->fabric trans hex:%s, time:%v.\n", hex, start_time.UnixMilli())
+			// glog.Info(fmt.Sprintf("---->hex:%s\n", hex)
+			glog.Info(fmt.Sprintf("FabricEndpoint EndpointWorkLoad hex:%s, start_time:%v, ChaincodeID:%s, ChaincodeFunc:%s, Params:%v.\n", hex, start_time, ChaincodeID, ChaincodeFunc, Params))
 			redis.Redisclient.SetBlockQPS(endpoint.blockname, ChaincodeID, hex, ClientUUID, start_time, start_time)
 		}
 	}()
@@ -118,9 +121,11 @@ func (endpoint *FabricEndpoint) EndpointWorkLoad(ChaincodeID, ChaincodeFunc, Cli
 
 // ETH
 func EndpointInitETH(nodeurl, blockname string) *ETHEndpoint {
+	glog.Info(fmt.Sprintf("EndpointInitETH Init SDK."))
 	endpoint := &ETHEndpoint{}
 
 	rpcClient := ethrpc.NewRPCClient(nodeurl, blockname)
+	glog.Info(fmt.Sprintf("EndpointInitETH Init SDK Success."))
 
 	endpoint.blockname = blockname
 	endpoint.rpcClient = rpcClient
@@ -134,12 +139,14 @@ func (endpoint *ETHEndpoint) EndpointUpdate() {
 		//  TODO 该时间返回为秒，系统设计单位为毫秒需要改正
 		timestamp_hex, block_height := endpoint.rpcClient.GetTranCountByTransID(hex)
 		if timestamp_hex != -1 {
-			// glog.Info("--->EndpointUpdate hex:%s, timestampe:%d.\n", hex, timestamp_hex)
+			// glog.Info(fmt.Sprintf("--->EndpointUpdate hex:%s, timestampe:%d.\n", hex, timestamp_hex)
 			// end_time := time.Now() //
 			end_time := time.UnixMilli(timestamp_hex)
 			redis.Redisclient.SetBlockUUIDSuccess(endpoint.blockname, hex, int64(block_height), end_time)
+			glog.Info(fmt.Sprintf("ETHEndpoint Trans success, trans hex:%s, timestamp_hex:%d, time:%v.\n", hex, timestamp_hex, end_time))
 		} else {
 			redis.Redisclient.IncrBlockUUID(endpoint.blockname, hex)
+			glog.Info(fmt.Sprintf("ETHEndpoint Trans failed, trans hex:%s.\n", hex))
 		}
 	}
 }
@@ -149,8 +156,8 @@ func (endpoint *ETHEndpoint) EndpointWorkLoad(ChaincodeID, ChaincodeFunc, Client
 		start_time := time.Now()
 		hex := endpoint.rpcClient.ExecContract(ChaincodeID, ChaincodeFunc, Params)
 		if len(hex) > 0 {
-			// glog.Info("--->EndpointWorkLoad hex:%s, start_time:%v, ChaincodeID:%s, ChaincodeFunc:%s, Params:%v.\n", hex, start_time, ChaincodeID, ChaincodeFunc, Params)
-			// glog.Info("---->eth trans hex:%s, time:%v.\n", hex, start_time.UnixMilli())
+			glog.Info(fmt.Sprintf("ETHEndpoint EndpointWorkLoad hex:%s, start_time:%v, ChaincodeID:%s, ChaincodeFunc:%s, Params:%v.\n", hex, start_time, ChaincodeID, ChaincodeFunc, Params))
+			// glog.Info(fmt.Sprintf("---->eth trans hex:%s, time:%v.\n", hex, start_time.UnixMilli())
 			redis.Redisclient.SetBlockQPS(endpoint.blockname, ChaincodeID, hex, ClientUUID, start_time, start_time)
 		}
 	}()
@@ -158,6 +165,7 @@ func (endpoint *ETHEndpoint) EndpointWorkLoad(ChaincodeID, ChaincodeFunc, Client
 
 // Meepo
 func EndpointInitMeepo(nodeurl, blockname string) *MeepoEndpoint {
+	glog.Info(fmt.Sprintf("EndpointInitMeepo Init SDK."))
 	endpoint := &MeepoEndpoint{}
 
 	rpcClient := meeporpc.NewRPCClient(nodeurl, blockname)
@@ -165,6 +173,7 @@ func EndpointInitMeepo(nodeurl, blockname string) *MeepoEndpoint {
 		glog.Exit("conn failed.")
 	}
 
+	glog.Info(fmt.Sprintf("EndpointInitMeepo Init SDK Success."))
 	endpoint.blockname = blockname
 	endpoint.rpcClient = rpcClient
 
@@ -177,12 +186,14 @@ func (endpoint *MeepoEndpoint) EndpointUpdate() {
 		//  TODO 该时间返回为秒，系统设计单位为毫秒需要改正
 		timestamp_hex, block_height := endpoint.rpcClient.GetTranCountByTransID(hex)
 		if timestamp_hex != -1 {
-			// glog.Info("--->EndpointUpdate hex:%s, timestampe:%d.\n", hex, timestamp_hex)
+			// glog.Info(fmt.Sprintf("--->EndpointUpdate hex:%s, timestampe:%d.\n", hex, timestamp_hex)
 			// end_time := time.Now() //
 			end_time := time.UnixMilli(timestamp_hex)
 			redis.Redisclient.SetBlockUUIDSuccess(endpoint.blockname, hex, int64(block_height), end_time)
+			glog.Info(fmt.Sprintf("MeepoEndpoint Trans success, trans hex:%s, timestamp_hex:%d, time:%v.\n", hex, timestamp_hex, end_time))
 		} else {
 			redis.Redisclient.IncrBlockUUID(endpoint.blockname, hex)
+			glog.Info(fmt.Sprintf("MeepoEndpoint Trans failed, trans hex:%s.\n", hex))
 		}
 	}
 }
@@ -192,8 +203,9 @@ func (endpoint *MeepoEndpoint) EndpointWorkLoad(ChaincodeID, ChaincodeFunc, Clie
 		start_time := time.Now()
 		hex := endpoint.rpcClient.ExecContract(ChaincodeID, ChaincodeFunc, Params)
 		if len(hex) > 0 {
-			// glog.Info("--->EndpointWorkLoad hex:%s, start_time:%v, ChaincodeID:%s, ChaincodeFunc:%s, Params:%v.\n", hex, start_time, ChaincodeID, ChaincodeFunc, Params)
-			// glog.Info("---->eth trans hex:%s, time:%v.\n", hex, start_time.UnixMilli())
+			// glog.Info(fmt.Sprintf("--->EndpointWorkLoad hex:%s, start_time:%v, ChaincodeID:%s, ChaincodeFunc:%s, Params:%v.\n", hex, start_time, ChaincodeID, ChaincodeFunc, Params)
+			// glog.Info(fmt.Sprintf("---->eth trans hex:%s, time:%v.\n", hex, start_time.UnixMilli())
+			glog.Info(fmt.Sprintf("MeepoEndpoint EndpointWorkLoad hex:%s, start_time:%v, ChaincodeID:%s, ChaincodeFunc:%s, Params:%v.\n", hex, start_time, ChaincodeID, ChaincodeFunc, Params))
 			redis.Redisclient.SetBlockQPS(endpoint.blockname, ChaincodeID, hex, ClientUUID, start_time, start_time)
 		}
 	}()
@@ -209,16 +221,19 @@ func main() {
 	defer glog.Flush()
 
 	serverUUID = utils.GetLocalUUID()
+	glog.Info(fmt.Sprintf("generation server uuid ", serverUUID))
 
 	config := viper.New()
 	config.AddConfigPath("./conf/server")
 	config.SetConfigName("config_server")
 	config.SetConfigType("json")
+	glog.Info(fmt.Sprintf("parse conf json ....."))
 
 	if err := config.ReadInConfig(); err != nil {
 		glog.Exit(">>>>error, ", err)
 	}
 
+	glog.Info(fmt.Sprintf("init redis server"))
 	//   初始化redis
 	redis_url := config.GetString("redis.url")
 	redis_passwd := config.GetString("redis.passwd")
@@ -228,6 +243,7 @@ func main() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
+	glog.Info(fmt.Sprintf("init mysql server"))
 	// 初始化mysql
 	mysql_endpoint := &mysql.MySQLendpoint{}
 	mysql_endpoint.UserName = config.GetString("mysql.userName")
@@ -243,12 +259,12 @@ func main() {
 	// 提前初始化服务接口
 	block_service := &BlockWorkLoadService{}
 
+	glog.Info(fmt.Sprintf("init nodes server"))
 	// 初始化区块链服务端
 	nodes := config.Get("nodes")
 	for _, value := range nodes.([]interface{}) {
 		node := value.(map[string]interface{})
 
-		glog.Info("############[%s]\n", node["name"])
 		name := node["name"].(string)
 		nodeurl := node["nodeurl"].(string)
 		is_open := node["open"].(bool)
@@ -258,9 +274,9 @@ func main() {
 			continue
 		}
 
+		glog.Info(fmt.Sprintf("init [%s] server.", name))
 		if name == "Fabric" {
 			fabric_node := EndpointInitFabric(nodeurl, name)
-			glog.Info("##### [%s] Init Successed!\n", name)
 			block_service.Fabric_endpoint = fabric_node
 			go func() {
 				time.Sleep(5 * time.Second)
@@ -271,7 +287,6 @@ func main() {
 		} else if name == "ETHPersonal" {
 			eth_node := EndpointInitETH(nodeurl, name)
 			block_service.Eth_endpoint = eth_node
-			glog.Info("##### [%s] Init Successed!\n", name)
 			go func() {
 				time.Sleep(5 * time.Second)
 				for range ticker.C {
@@ -281,7 +296,6 @@ func main() {
 		} else if name == "MeepoPersonal" {
 			meepo_node := EndpointInitMeepo(nodeurl, name)
 			block_service.Meepo_endpoint = meepo_node
-			glog.Info("##### [%s] Init Successed!\n", name)
 			go func() {
 				time.Sleep(5 * time.Second)
 				for range ticker.C {
@@ -290,7 +304,7 @@ func main() {
 			}()
 		}
 	}
-	glog.Info("### UUID[%s]\n", serverUUID)
+	glog.Info(fmt.Sprintf(fmt.Sprintf("Server UUID [%s]\n", serverUUID)))
 
 	//  定时更新redis数据
 	go func() {
@@ -310,6 +324,7 @@ func main() {
 	pb.RegisterWorkLoadServer(grpcServer, block_service)
 	reflection.Register(grpcServer)
 	grpcServer.Serve(lis)
+	glog.Info(fmt.Sprintf("already init success, wait for data.\n"))
 
 	select {}
 }

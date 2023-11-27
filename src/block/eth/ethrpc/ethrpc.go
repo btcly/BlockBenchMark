@@ -12,6 +12,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"fmt"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -42,7 +43,7 @@ type RPCClient struct {
 var (
 	gkeystore_path   = "./conf/block/eth/keystore/"
 	gkeystore_passwd = "123456"
-	gchainid         = big.NewInt(1234)
+	gchainid         = big.NewInt(123456) //  启动后从区块链上获取
 	ggasLimit        = uint64(300000)
 )
 
@@ -51,7 +52,7 @@ func NewRPCClient(nodeUrl, blockName string) *RPCClient {
 
 	eth_client, err := ethclient.Dial(nodeUrl)
 	if err != nil {
-		glog.Info("conn nodeurl:%s, err:%s.\n", nodeUrl, err)
+		glog.Info(fmt.Sprintf("conn nodeurl:%s, err:%s.\n", nodeUrl, err))
 		return nil
 	}
 
@@ -65,6 +66,7 @@ func NewRPCClient(nodeUrl, blockName string) *RPCClient {
 	rpcClient.blockName = blockName
 
 	rpcClient.DoPost()
+	glog.Info(fmt.Sprintf("ETH gchainid=", gchainid))
 
 	loadKeystore(rpcClient, blockName)
 
@@ -86,7 +88,7 @@ func stringToPrivateKey(privateKeyStr string) (*ecdsa.PrivateKey, error) {
 	// 解码十六进制字符串
 	privateKeyBytes, err := hex.DecodeString(privateKeyHex)
 	if err != nil {
-		glog.Info("DecodeString privatekey:%s, err:%s.\n", privateKeyHex, err)
+		glog.Info(fmt.Sprintf("DecodeString privatekey:%s, err:%s.\n", privateKeyHex, err))
 		return nil, err
 	}
 
@@ -99,16 +101,17 @@ func stringToPrivateKey(privateKeyStr string) (*ecdsa.PrivateKey, error) {
 }
 
 func loadKeystore(client *RPCClient, blockName string) {
+	glog.Info(fmt.Sprintf("load keystore file from ", blockName))
 	var files []string
 	err := filepath.Walk(gkeystore_path, func(path string, info os.FileInfo, err error) error {
-		// glog.Info(":---->path:%s.\n", path)
+		// glog.Info(fmt.Sprintf(":---->path:%s.\n", path))
 		if path != gkeystore_path {
 			files = append(files, path)
 		}
 		return nil
 	})
 	if err != nil {
-		glog.Info("load keystore file failed, err:%s.\n", err)
+		glog.Info(fmt.Sprintf("load keystore file failed, err:%s.\n", err))
 		return
 	}
 	for _, file := range files {
@@ -116,22 +119,22 @@ func loadKeystore(client *RPCClient, blockName string) {
 		//  该路径是二进制执行的相对位置
 		keyJson, err := ioutil.ReadFile(file)
 		if err != nil {
-			glog.Info("read file:%s, failed, err:%s.\n", file, err)
+			glog.Info(fmt.Sprintf("read file:%s, failed, err:%s.\n", file, err))
 			continue
 		}
 
 		key, err := keystore.DecryptKey(keyJson, gkeystore_passwd)
 		if err != nil {
-			glog.Info("parse json failed, err:%s.\n", err)
+			glog.Info(fmt.Sprintf("parse json failed, err:%s.\n", err))
 			continue
 		}
 
-		// glog.Info("keystore key:%v.\n", key)
+		// glog.Info(fmt.Sprintf("keystore key:%v.\n", key))
 
 		publicKey := key.PrivateKey.Public()
 		publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 		if !ok {
-			glog.Info("error casting public key to ECDSA")
+			glog.Info(fmt.Sprintf("error casting public key to ECDSA"))
 			continue
 		}
 
@@ -147,11 +150,11 @@ func loadKeystore(client *RPCClient, blockName string) {
 		privateKeyBytes := privateKeyToString(key.PrivateKey)
 		redis.Redisclient.SetPrivateInitToRedis(blockName, fromAddress.Hex(), string(privateKeyBytes))
 
-		// glog.Info("--->HEX :%s,privateKeyBytes:%s.\n", hex.EncodeToString(key.PrivateKey.D.Bytes()), privateKeyBytes)
+		// glog.Info(fmt.Sprintf("--->HEX :%s,privateKeyBytes:%s.\n", hex.EncodeToString(key.PrivateKey.D.Bytes()), privateKeyBytes))
 
 		nonce_from_block, err := client.ethClient.PendingNonceAt(context.Background(), fromAddress)
 		if err != nil {
-			glog.Info("pending failed, err:", err)
+			glog.Info(fmt.Sprintf("pending failed, err:%s", err))
 			continue
 		}
 		//  设置nonce初始化值,除去0外，以最大的数值为准
@@ -164,25 +167,28 @@ func loadKeystore(client *RPCClient, blockName string) {
 
 		gasPrice, err := client.ethClient.SuggestGasPrice(context.Background())
 		if err != nil {
-			glog.Info("suggest gas price, err:", err)
+			glog.Info(fmt.Sprintf("suggest gas price, err:%s", err))
 			continue
 		}
 
 		auth, err := bind.NewKeyedTransactorWithChainID(key.PrivateKey, gchainid)
 		if err != nil {
-			glog.Info("transactor gchainid[%d], err:%v.\n", gchainid, err)
+			glog.Info(fmt.Sprintf("transactor gchainid[%d], err:%v.\n", gchainid, err))
 			continue
 		}
+
+		glog.Info(fmt.Sprintf("----->load eth address:%s, nonce:%d.", fromAddress.Hex(), nonce))
+
 		auth.Nonce = big.NewInt(int64(nonce))
 		auth.Value = big.NewInt(0) // in wei
 		auth.GasLimit = ggasLimit  // in units
 		auth.GasPrice = big.NewInt(0).Add(gasPrice, big.NewInt(int64(rand.Intn(300000))))
 
 		//  STORE
-		storeConAddress, storehex, _, err := store.DeployStore(auth, client.ethClient, "1.0.0") // 部署合约
-		glog.Info("----->eth address:%s, storehex:%s, nonce:%d.\n", fromAddress.Hex(), storehex.Hash().String(), auth.Nonce)
+		storeConAddress, _, _, err := store.DeployStore(auth, client.ethClient, "1.0.0") // 部署合约
+		// glog.Info(fmt.Sprintf("----->eth address:%s, storehex:%s, nonce:%d.", fromAddress.Hex(), storehex.Hash().String(), auth.Nonce))
 		if err != nil {
-			glog.Info("deploy DeployStore err:", err)
+			glog.Info(fmt.Sprintf("deploy DeployStore err:", err))
 			continue
 		}
 		redis.Redisclient.SetContracAddresstToRedis(blockName, "store", fromAddress.Hex(), storeConAddress.Hex())
@@ -190,10 +196,10 @@ func loadKeystore(client *RPCClient, blockName string) {
 		//  SMALLBANK
 		//  从redis获取
 		auth.Nonce = big.NewInt(redis.Redisclient.GetNonceFromRedis(blockName, fromAddress.Hex()))
-		// glog.Info("----->eth address:%s, nonce:%d.\n", fromAddress.Hex(), auth.Nonce)
+		// glog.Info(fmt.Sprintf("----->eth address:%s, nonce:%d.\n", fromAddress.Hex(), auth.Nonce))
 		smallbankConAddress, _, _, err := smallbank.DeploySmallbank(auth, client.ethClient) // 部署合约
 		if err != nil {
-			glog.Info("deploy DeploySmallbank err:", err)
+			glog.Info(fmt.Sprintf("deploy DeploySmallbank err:", err))
 			continue
 		}
 		redis.Redisclient.SetContracAddresstToRedis(blockName, "kvstore", fromAddress.Hex(), smallbankConAddress.Hex())
@@ -201,10 +207,10 @@ func loadKeystore(client *RPCClient, blockName string) {
 		//  KVSTORE
 		//  从redis获取
 		auth.Nonce = big.NewInt(redis.Redisclient.GetNonceFromRedis(blockName, fromAddress.Hex()))
-		// glog.Info("----->eth address:%s, nonce:%d.\n", fromAddress.Hex(), auth.Nonce)
+		// glog.Info(fmt.Sprintf("----->eth address:%s, nonce:%d.\n", fromAddress.Hex(), auth.Nonce)
 		kvstoreConAddress, _, _, err := kvstore.DeployKvstore(auth, client.ethClient) // 部署合约
 		if err != nil {
-			glog.Info("deploy DeployKvstore err:", err)
+			glog.Info(fmt.Sprintf("deploy DeployKvstore err:", err))
 			continue
 		}
 		redis.Redisclient.SetContracAddresstToRedis(blockName, "smallbank", fromAddress.Hex(), kvstoreConAddress.Hex())
@@ -213,14 +219,14 @@ func loadKeystore(client *RPCClient, blockName string) {
 		redis.Redisclient.SetNonceunLock(blockName, fromAddress.Hex())
 	}
 
-	glog.Info("loading ETH contract Successed.\n")
+	glog.Info(fmt.Sprintf("loading ETH contract Successed.\n"))
 
 }
 
 func (client *RPCClient) GetAuthInfo(contractName string) (*bind.TransactOpts, string) {
 	contractaddr, fromaddr, _ := redis.Redisclient.GetRandomFieldContract(client.blockName, contractName)
 	if contractaddr == "" || fromaddr == "" {
-		glog.Info("GetRandomFieldContract not found address.\n")
+		glog.Info(fmt.Sprintf("GetRandomFieldContract not found address.\n"))
 		return nil, ""
 	}
 	privateKeyStr := redis.Redisclient.GetPrivateInitToRedis(client.blockName, fromaddr)
@@ -229,13 +235,13 @@ func (client *RPCClient) GetAuthInfo(contractName string) (*bind.TransactOpts, s
 
 	gasPrice, err := client.ethClient.SuggestGasPrice(context.Background())
 	if err != nil {
-		glog.Info("suggest gas price, err:%s.\n", err)
+		glog.Info(fmt.Sprintf("suggest gas price, err:%s.\n", err))
 		return nil, ""
 	}
 
 	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, gchainid)
 	if err != nil {
-		glog.Info("transactor gchainid[%d], err:%v.\n", gchainid, err)
+		glog.Info(fmt.Sprintf("transactor gchainid[%d], err:%v.\n", gchainid, err))
 		return nil, ""
 	}
 
@@ -245,7 +251,7 @@ func (client *RPCClient) GetAuthInfo(contractName string) (*bind.TransactOpts, s
 	auth.GasLimit = ggasLimit  // in units
 	auth.GasPrice = big.NewInt(0).Add(gasPrice, big.NewInt(int64(rand.Intn(300000))))
 
-	// glog.Info("--->contractName:%s, contractaddr:%s, fromaddr:%s, auth:%d.\n", contractName, contractaddr, fromaddr, auth.Nonce)
+	// glog.Info(fmt.Sprintf("--->contractName:%s, contractaddr:%s, fromaddr:%s, auth:%d.\n", contractName, contractaddr, fromaddr, auth.Nonce))
 	return auth, contractaddr
 }
 
@@ -253,7 +259,7 @@ func (client *RPCClient) GetAuthInfo(contractName string) (*bind.TransactOpts, s
 func (client *RPCClient) ExecContract(ChaincodeID, ChaincodeFunc string, Params []string) string {
 	auth, contractaddr := client.GetAuthInfo(ChaincodeID)
 	if auth == nil {
-		glog.Info("now get ChaincodeID[%s] error, please check!\n", ChaincodeID)
+		glog.Info(fmt.Sprintf("now get ChaincodeID[%s] error, please check!\n", ChaincodeID))
 		return ""
 	}
 	contractAddr := common.HexToAddress(contractaddr)
@@ -266,7 +272,7 @@ func (client *RPCClient) ExecContract(ChaincodeID, ChaincodeFunc string, Params 
 	} else if ChaincodeID == "smallbank" {
 		hex = client.exeSmallbankFunction(ChaincodeFunc, Params, auth, contractAddr)
 	} else {
-		glog.Info("not support chaincideid [%s], please check.\n", ChaincodeID)
+		glog.Info(fmt.Sprintf("not support chaincideid [%s], please check.\n", ChaincodeID))
 	}
 	return hex
 }
@@ -284,14 +290,14 @@ func (client *RPCClient) exeStoreFunction(funcname string, Params []string, auth
 	} else if funcname == "versionContract" {
 		storecTx, err = storeRawcont.Transact(auth, funcname)
 	} else {
-		glog.Info("contract Store not support funcname [%s].\n", funcname)
+		glog.Info(fmt.Sprintf("contract Store not support funcname [%s].\n", funcname))
 		return ""
 	}
 	if err != nil {
-		glog.Info("Transact addres[%s-%d], err:%s", contractAddress, auth.Nonce, err)
+		glog.Info(fmt.Sprintf("Transact addres[%s-%d], err:%s", contractAddress, auth.Nonce, err))
 		return ""
 	}
-	// glog.Info("txid : %v\n", storecTx.Hash().String())
+	// glog.Info(fmt.Sprintf("txid : %v\n", storecTx.Hash().String()))
 	return storecTx.Hash().String()
 }
 
@@ -307,14 +313,14 @@ func (client *RPCClient) exeKVStoreFunction(funcname string, Params []string, au
 	} else if funcname == "get" {
 		storecTx, err = kvstoreRawcont.Transact(auth, funcname, Params[0])
 	} else {
-		glog.Info("contract KVStore not support funcname [%s].\n", funcname)
+		glog.Info(fmt.Sprintf("contract KVStore not support funcname [%s].\n", funcname))
 		return ""
 	}
 	if err != nil {
-		glog.Info("Transact addres[%s-%d], err:%s", contractAddress, auth.Nonce, err)
+		glog.Info(fmt.Sprintf("Transact addres[%s-%d], err:%s", contractAddress, auth.Nonce, err))
 		return ""
 	}
-	// glog.Info("txid : %v\n", storecTx.Hash().String())
+	// glog.Info(fmt.Sprintf("txid : %v\n", storecTx.Hash().String()))
 	return storecTx.Hash().String()
 }
 
@@ -341,26 +347,33 @@ func (client *RPCClient) exeSmallbankFunction(funcname string, Params []string, 
 		arg1, _ := new(big.Int).SetString(Params[1], 10)
 		storecTx, err = smallbankRawcont.Transact(auth, funcname, Params[0], arg1)
 	} else {
-		glog.Info("contract Smallbank not support funcname [%s].\n", funcname)
+		glog.Info(fmt.Sprintf("contract Smallbank not support funcname [%s].\n", funcname))
 		return ""
 	}
 
 	if err != nil {
-		glog.Info("Transact addres[%s-%d], err:%s", contractAddress, auth.Nonce, err)
+		glog.Info(fmt.Sprintf("Transact addres[%s-%d], err:%s", contractAddress, auth.Nonce, err))
 		return ""
 	}
-	// glog.Info("txid : %v\n", storecTx.Hash().String())
+	// glog.Info(fmt.Sprintf("txid : %v\n", storecTx.Hash().String()))
 	return storecTx.Hash().String()
 }
 
 func (client *RPCClient) DoPost() {
 	var networkid string
 	client.rpcClient.Call(&networkid, "net_version")
-	glog.Info("--->networkid:", networkid)
+	glog.Info(fmt.Sprintf("--->eth networkid:", networkid))
+
+	var chainid string
+	client.rpcClient.Call(&chainid, "eth_chainId")
+	glog.Info(fmt.Sprintf("--->eth chainid:", chainid))
+	if chainid != "" {
+		gchainid.SetString(chainid[2:], 16)
+	}
 
 	var proto_version string
 	client.rpcClient.Call(&proto_version, "eth_protocolVersion")
-	glog.Info("--->proto_version:", proto_version)
+	glog.Info(fmt.Sprintf("--->eth proto_version:", proto_version))
 
 	if networkid == "" && proto_version == "" {
 		glog.Exit("client failed, please check.\n")
@@ -372,21 +385,21 @@ func (client *RPCClient) GetBlance(addr string) {
 
 	err := client.rpcClient.Call(&reply, "eth_getBalance", addr, "latest") //第一个是用来存放回复数据的格式，第二个是请求方法
 	if err != nil {
-		glog.Info("err:", err)
+		glog.Info(fmt.Sprintf("err:", err))
 	}
 	//这里得到的还是16进制的需要做个进制转换成10进制
 	n := new(big.Int)
 	n, _ = n.SetString(reply.(string)[2:], 16)
 	basevalue := big.NewInt(1000000000000000000)
 	content := addr + " ---> " + (n.Div(n, basevalue)).String() + "ETH" + "\n"
-	glog.Info(content)
+	glog.Info(fmt.Sprintf(content))
 }
 
 func (client *RPCClient) GetTranCountByTransID(transHex string) (int64, int64) {
 	var reply interface{}
 	err := client.rpcClient.Call(&reply, "eth_getTransactionByHash", transHex) //第一个是用来存放回复数据的格式，第二个是请求方法
 	if err != nil {
-		glog.Info("err:", err)
+		glog.Info(fmt.Sprintf("err:", err))
 		return -1, -1
 	}
 	if reply == nil {
@@ -396,7 +409,7 @@ func (client *RPCClient) GetTranCountByTransID(transHex string) (int64, int64) {
 
 	if _, ok := res["blockNumber"]; !ok {
 		// 不存在
-		glog.Info("res not find key blockNumber")
+		glog.Info(fmt.Sprintf("res not find key blockNumber"))
 		return -1, -1
 	}
 	blockNumber := res["blockNumber"]
@@ -405,36 +418,36 @@ func (client *RPCClient) GetTranCountByTransID(transHex string) (int64, int64) {
 	}
 
 	// restest, isPending, _ := client.ethClient.TransactionByHash(context.Background(), common.HexToHash(transHex))
-	// glog.Info("---->eth_getTransactionByHash, res[%s].\n", res)
-	// glog.Info("---->TransactionByHash, hex[%s], result:%v, time:%v.\n", transHex, isPending, restest.Time())
+	// glog.Info(fmt.Sprintf("---->eth_getTransactionByHash, res[%s].\n", res))
+	// glog.Info(fmt.Sprintf("---->TransactionByHash, hex[%s], result:%v, time:%v.\n", transHex, isPending, restest.Time()))
 
 	number, _ := strconv.ParseInt(blockNumber.(string)[2:], 16, 32)
 	err = client.rpcClient.Call(&reply, "eth_getBlockByNumber", blockNumber, true) //第一个是用来存放回复数据的格式，第二个是请求方法
 	if err != nil {
-		glog.Info("err:", err)
+		glog.Info(fmt.Sprintf("err:", err))
 		return -1, -1
 	}
 	blockInfo, _ := reply.(map[string]interface{})
 	if blockInfo == nil {
-		glog.Info("err:", err)
+		glog.Info(fmt.Sprintf("err:", err))
 		return -1, -1
 	}
 
 	if _, ok := blockInfo["timestamp"]; !ok {
 		// 不存在
-		glog.Info("blockInfo not find key timestamp")
+		glog.Info(fmt.Sprintf("blockInfo not find key timestamp"))
 		return -1, -1
 	}
 	if blockInfo["timestamp"] == nil {
 		return -1, -1
 	}
 	blcokTime, _ := strconv.ParseInt(blockInfo["timestamp"].(string)[2:], 16, 64)
-	// glog.Info("------>time:%s,%d\n", blockInfo["timestamp"], blcokTime)
+	// glog.Info(fmt.Sprintf("------>time:%s,%d\n", blockInfo["timestamp"], blcokTime))
 
 	// // 获取区块头
 	// block, err := client.ethClient.BlockByHash(context.Background(), common.HexToHash(res["blockHash"].(string)))
 	// if err != nil {
-	// 	glog.Info("---->address:%s, err:%s", res["blockHash"].(string), err)
+	// 	glog.Info(fmt.Sprintf("---->address:%s, err:%s", res["blockHash"].(string), err))
 	// 	return -1, -1
 	// }
 
@@ -452,17 +465,17 @@ func (client *RPCClient) GetTranCountByBlockNumber(Number int64) (int64, int64) 
 	blockNumber = "0x" + blockNumber
 	err := client.rpcClient.Call(&reply, "eth_getBlockByNumber", blockNumber, true) //第一个是用来存放回复数据的格式，第二个是请求方法
 	if err != nil {
-		glog.Info("err:", err)
+		glog.Info(fmt.Sprintf("err:", err))
 		return -1, -1
 	}
 	blockInfo, _ := reply.(map[string]interface{})
-	// glog.Info("------>time:", blockInfo["timestamp"])
+	// glog.Info(fmt.Sprintf("------>time:", blockInfo["timestamp"]))
 	// UTC时间转为UTC+8
 	blockTime, _ := strconv.ParseInt(blockInfo["timestamp"].(string)[2:], 16, 64)
 
 	err = client.rpcClient.Call(&reply, "eth_getBlockTransactionCountByNumber", blockNumber) //第一个是用来存放回复数据的格式，第二个是请求方法
 	if err != nil {
-		glog.Info("err:", err)
+		glog.Info(fmt.Sprintf("err:", err))
 		return -1, -1
 	}
 
@@ -474,7 +487,7 @@ func (client *RPCClient) FindTranCountByTransID(transHex string) bool {
 	var reply interface{}
 	err := client.rpcClient.Call(&reply, "eth_getTransactionByHash", transHex) //第一个是用来存放回复数据的格式，第二个是请求方法
 	if err != nil {
-		glog.Info("err:", err)
+		glog.Info(fmt.Sprintf("err:", err))
 		return false
 	}
 
@@ -491,9 +504,9 @@ func (client *RPCClient) FindTranCountByTransID(transHex string) bool {
 // 	bind_call := &bind.CallOpts{Pending: true}
 // 	value, err := storeCallNew.GetItem(bind_call, key)
 // 	if err != nil {
-// 		glog.Info(err)
+// 		glog.Info(fmt.Sprintf(err))
 // 	}
-// 	// glog.Info("value:", value)
+// 	// glog.Info(fmt.Sprintf("value:", value))
 // 	return value
 // }
 
@@ -502,8 +515,8 @@ func (client *RPCClient) FindTranCountByTransID(transHex string) bool {
 // 	bind_call := &bind.CallOpts{Pending: true}
 // 	version, err := storeCallNew.VersionContract(bind_call)
 // 	if err != nil {
-// 		glog.Info(err)
+// 		glog.Info(fmt.Sprintf(err))
 // 	}
-// 	// glog.Info("version:", version)
+// 	// glog.Info(fmt.Sprintf("version:", version))
 // 	return version
 // }

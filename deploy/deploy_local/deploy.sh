@@ -39,11 +39,11 @@ cp -rf grafana_data ${WORK_DOCKER_PATH}
 mkdir -pv ${WORK_DOCKER_PATH}/prometheus_data
 cd ${WORK_DOCKER_PATH}
 chmod 777 grafana_data/grafana.db grafana_data prometheus_data
-cp -f ${DOCKER_PATH}/docker-compose-prometheus.yaml . 
+cp -f ${DOCKER_PATH}/docker-compose-monitor.yaml . 
 cp -f ${DOCKER_PATH}/prometheus.yml . 
-docker-compose -f docker-compose-prometheus.yaml down
+docker-compose -f docker-compose-monitor.yaml down
 yes 'y'|docker volume prune
-docker-compose -f docker-compose-prometheus.yaml up -d
+docker-compose -f docker-compose-monitor.yaml up -d
 docker update --restart=always $(docker ps -aq)
 
 
