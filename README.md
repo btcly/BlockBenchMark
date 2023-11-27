@@ -2,7 +2,7 @@
 # 介绍
 此为区块链压测工具，使用Golang开发，支持ETH、Fabric、Meepo、NeuChain（待完成）四类区块链。
 # 架构图
-<div align=center><img width="150" height="150" src="https://github.com/masnail/BlockBenchMark/assets/51044388/87ac2cfa-05cd-4f3f-803c-ba901daab1d1"/></div>
+<div align=center><img width="1500" height="900" src="https://github.com/masnail/BlockBenchMark/assets/51044388/87ac2cfa-05cd-4f3f-803c-ba901daab1d1"/></div>
 
 
 # 软件版本
