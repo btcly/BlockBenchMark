@@ -76,13 +76,13 @@ func main() {
 	uuid := utils.GetLocalUUID()
 
 	server_ip, _ := toStringSlice(config.Get("sever_ip"))
-	glog.Info(fmt.Sprintf("server_ip>>>>>", config.Get("sever_ip")))
+	glog.Info("server_ip>>>>>", config.Get("sever_ip"))
 
 	nodes := config.Get("items")
 	for _, value := range nodes.([]interface{}) {
 		node := value.(map[string]interface{})
 
-		glog.Info(fmt.Sprintf("load data, ", node["type"], node["sever_ip"], node["blockname"], node["qps"], node["open"]))
+		glog.Info("load data, ", node["type"], node["sever_ip"], node["blockname"], node["qps"], node["open"])
 
 		client_endpoint := &ClientEndPoint{}
 		client_endpoint.client_type = node["type"].(string)
@@ -155,7 +155,7 @@ func DataPerf(client_endpoint *ClientEndPoint) {
 	// {Addr: "127.0.0.1:50051"}, {Addr: "127.0.0.1:7001"}}})
 
 	if err != nil {
-		glog.Exit("did not connect: %v", err)
+		glog.Exit("did not connect:", err)
 	}
 	defer conn.Close()
 
@@ -199,7 +199,7 @@ func DataPerf(client_endpoint *ClientEndPoint) {
 				// glog.Info(fmt.Sprintf("############ [%s]-[%d]-[%s] >>>>>>>>>>>!", client_endpoint.blockname, create_time, req.Params)
 				_, err := client.SendWorkLoad(context.Background(), &req)
 				if err != nil {
-					glog.Info(fmt.Sprintf("client.SendWorkLoad error:", err))
+					glog.Warning("client.SendWorkLoad error:", err)
 					return
 				}
 				// glog.Info(fmt.Sprintf("get msg from server:[%v] \n", reply)

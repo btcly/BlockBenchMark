@@ -79,11 +79,11 @@ func (s BlockWorkLoadService) SendWorkLoad(c context.Context, req *pb.WorkLoadRe
 // FABRIC
 func EndpointInitFabric(nodeurl, blockname string) *FabricEndpoint {
 	endpoint := &FabricEndpoint{}
-	glog.Info(fmt.Sprintf("EndpointInitFabric Init SDK."))
+	glog.Info("EndpointInitFabric Init SDK.")
 	//初始化sdk
 	sdk := fabricrpc.InitSDK()
 	client := fabricrpc.InitFabricClient(sdk)
-	glog.Info(fmt.Sprintf("EndpointInitFabric Init SDK Successed."))
+	glog.Info("EndpointInitFabric Init SDK Successed.")
 
 	endpoint.fabric_client = client
 	endpoint.blockname = blockname
@@ -121,11 +121,11 @@ func (endpoint *FabricEndpoint) EndpointWorkLoad(ChaincodeID, ChaincodeFunc, Cli
 
 // ETH
 func EndpointInitETH(nodeurl, blockname string) *ETHEndpoint {
-	glog.Info(fmt.Sprintf("EndpointInitETH Init SDK."))
+	glog.Info("EndpointInitETH Init SDK.")
 	endpoint := &ETHEndpoint{}
 
 	rpcClient := ethrpc.NewRPCClient(nodeurl, blockname)
-	glog.Info(fmt.Sprintf("EndpointInitETH Init SDK Success."))
+	glog.Info("EndpointInitETH Init SDK Success.")
 
 	endpoint.blockname = blockname
 	endpoint.rpcClient = rpcClient
@@ -165,7 +165,7 @@ func (endpoint *ETHEndpoint) EndpointWorkLoad(ChaincodeID, ChaincodeFunc, Client
 
 // Meepo
 func EndpointInitMeepo(nodeurl, blockname string) *MeepoEndpoint {
-	glog.Info(fmt.Sprintf("EndpointInitMeepo Init SDK."))
+	glog.Info("EndpointInitMeepo Init SDK.")
 	endpoint := &MeepoEndpoint{}
 
 	rpcClient := meeporpc.NewRPCClient(nodeurl, blockname)
@@ -173,7 +173,7 @@ func EndpointInitMeepo(nodeurl, blockname string) *MeepoEndpoint {
 		glog.Exit("conn failed.")
 	}
 
-	glog.Info(fmt.Sprintf("EndpointInitMeepo Init SDK Success."))
+	glog.Info("EndpointInitMeepo Init SDK Success.")
 	endpoint.blockname = blockname
 	endpoint.rpcClient = rpcClient
 
@@ -221,13 +221,13 @@ func main() {
 	defer glog.Flush()
 
 	serverUUID = utils.GetLocalUUID()
-	glog.Info(fmt.Sprintf("generation server uuid ", serverUUID))
+	glog.Info("generation server uuid ", serverUUID)
 
 	config := viper.New()
 	config.AddConfigPath("./conf/server")
 	config.SetConfigName("config_server")
 	config.SetConfigType("json")
-	glog.Info(fmt.Sprintf("parse conf json ....."))
+	glog.Info("parse conf json .....")
 
 	if err := config.ReadInConfig(); err != nil {
 		glog.Exit(">>>>error, ", err)
@@ -243,7 +243,7 @@ func main() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
-	glog.Info(fmt.Sprintf("init mysql server"))
+	glog.Info("init mysql server")
 	// 初始化mysql
 	mysql_endpoint := &mysql.MySQLendpoint{}
 	mysql_endpoint.UserName = config.GetString("mysql.userName")
@@ -259,7 +259,7 @@ func main() {
 	// 提前初始化服务接口
 	block_service := &BlockWorkLoadService{}
 
-	glog.Info(fmt.Sprintf("init nodes server"))
+	glog.Info("init nodes server")
 	// 初始化区块链服务端
 	nodes := config.Get("nodes")
 	for _, value := range nodes.([]interface{}) {
@@ -324,7 +324,7 @@ func main() {
 	pb.RegisterWorkLoadServer(grpcServer, block_service)
 	reflection.Register(grpcServer)
 	grpcServer.Serve(lis)
-	glog.Info(fmt.Sprintf("already init success, wait for data.\n"))
+	glog.Info("already init success, wait for data.\n")
 
 	select {}
 }

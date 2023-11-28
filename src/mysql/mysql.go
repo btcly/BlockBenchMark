@@ -72,7 +72,7 @@ func InitMysql() {
 	useDBSQL := "USE " + Mysql_endpoint.DbName
 	_, err = Db.Exec(useDBSQL)
 	if err != nil {
-		glog.Exit("use database err, %v", err)
+		glog.Exit("use database err,", err)
 	}
 
 	// Maximum Idle Connections
@@ -157,8 +157,8 @@ func (dbconn *DBConn) InsertBatchBlockInfos(data []TableInfo) {
 
 	_, err := dbconn.Db.Exec(sqlStr, vals...) // vals...: 解构
 	if err != nil {
-		glog.Info(fmt.Sprintf("sqlStr:", sqlStr))
-		glog.Info(fmt.Sprintf("vals: ", vals))
-		glog.Info(fmt.Sprintf("mysql inert err: ", err))
+		glog.Info("sqlStr:", sqlStr)
+		glog.Info("vals: ", vals)
+		glog.Info("mysql inert err: ", err)
 	}
 }

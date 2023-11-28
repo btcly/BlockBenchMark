@@ -41,7 +41,7 @@ func InitSDK() *fabsdk.FabricSDK {
 	configProvider := config.FromFile("./conf/block/fabric/fabric_config.yaml")
 	sdk, err := fabsdk.New(configProvider)
 	if err != nil {
-		glog.Info(fmt.Sprintf("failed to create sdk: %s", err))
+		glog.Warning(fmt.Sprintf("failed to create sdk: %s", err))
 	}
 	return sdk
 }
@@ -97,7 +97,7 @@ func (client *FabricClient) FindTranCountByTransID(transHex string) int32 {
 	// lclient, _ := ledger.New(ctx)
 	pbtran, err := client.ledgerclient.QueryTransaction(fab.TransactionID(transHex))
 	if err != nil {
-		glog.Info(fmt.Sprintf("transid:%s failed, err:%s", transHex, err))
+		glog.Warning(fmt.Sprintf("transid:%s failed, err:%s", transHex, err))
 		return 0
 	}
 
@@ -112,7 +112,7 @@ func (client *FabricClient) GetTranCountByTransID(transHex string) (int64 /* 毫
 	}
 	pbtran, err := client.ledgerclient.QueryTransaction(fab.TransactionID(transHex))
 	if err != nil {
-		glog.Info(fmt.Sprintf("QueryTransaction transid:%s failed, err:%s", transHex, err))
+		glog.Warning(fmt.Sprintf("QueryTransaction transid:%s failed, err:%s", transHex, err))
 		return -1, -1
 	}
 
@@ -134,7 +134,7 @@ func (client *FabricClient) GetTranCountByTransID(transHex string) (int64 /* 毫
 	// block
 	pbblock, err := client.ledgerclient.QueryBlockByTxID(fab.TransactionID(transHex))
 	if err != nil {
-		glog.Info(fmt.Sprintf("QueryBlockByTxID transid:%s failed, err:%s", transHex, err))
+		glog.Warning(fmt.Sprintf("QueryBlockByTxID transid:%s failed, err:%s", transHex, err))
 		return -1, -1
 	}
 	number := int64(pbblock.GetHeader().GetNumber())
@@ -145,7 +145,7 @@ func (client *FabricClient) GetTranCountByBlockNumber(blockNumber int64) (int64,
 	// lclient, _ := ledger.New(ctx)
 	pbblock, err := client.ledgerclient.QueryBlock(uint64(blockNumber))
 	if err != nil {
-		glog.Info(fmt.Sprintf("blocknumber:%d failed, err:%s", blockNumber, err))
+		glog.Warning(fmt.Sprintf("blocknumber:%d failed, err:%s", blockNumber, err))
 		return -1, -1
 	}
 
