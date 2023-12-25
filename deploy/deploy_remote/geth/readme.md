@@ -1,42 +1,42 @@
-# 介绍
-此为Geth远程安装目录，需要通过ansible-playbook将程序拷贝到其它机器上
+# Introduction
+This is the Geth remote installation directory. You need to copy the program to other machines through ansible-playbook.
 
-# 文件介绍
-Geth相关的文件统一放到geth_pack中
+# Document introduction
+Geth related files are unified into geth_pack
 
-重要文件和目录介绍：
+Introduction to important files and directories：
 ```shell
-./geth_pack/conf：存放每个节点挖矿的地址，文件名字和主机列表中名字对应
+./geth_pack/conf：Stores the mining address of each node. The file name corresponds to the name in the host list.
 ```
 ```shell
-./geth_pack/geth.json：ETH私链配置文件，请务必保持networkid和启动的networkid保持一致
+./geth_pack/geth.json：ETH private chain configuration file, please be sure to keep the networkid consistent with the started networkid
 ```
 
-# 执行命令
-因为使用相对路径，需要再当前目录下操作
+# Execute a command
+Because relative paths are used, operations need to be done in the current directory.
 ```shell
 ansible-playbook -i ansible_hosts_geth.yaml ansible_deploy_geth.yaml
 ```
-# 主机列表
-> 在使用ansible_hosts_geth.yaml的时候请严格按照Geth多节点集群进行更改。
+# Host List
+> When using ansible_hosts_geth.yaml, please make changes strictly in accordance with the Geth multi-node cluster.
 
-## 本项目的Fabric结构
-本项目搭建的为四节点ETH私链
-| ip地址       | 节点名称  |
+## Fabric structure of this project
+This project builds a four-node ETH private chain
+| ip address       | node name  |
 | :----------- |:------------:|
 |   192.168.93.137    |   geth1  |
 |   192.168.93.138    |   geth2  |
 |   192.168.93.139    |   geth3  |
 |   192.168.93.140    |   geth4  |
 
-## 主机列表配置
+## Host list configuration
 ```shell
 geth:
   vars:
-    workpath: "/opt/block/geth" # 远程节点工作目录
+    workpath: "/opt/block/geth" # Remote node working directory
 
   hosts:
-    geth1: # 远程节点名字，此名字和每个节点的挖矿地址相关
+    geth1: # Remote node name, this name is related to the mining address of each node
       ansible_host: 192.168.93.137
       ansible_user: geth 
     geth2:
@@ -52,9 +52,9 @@ geth:
 
 ```
 
-# 任务列表
-具体的任务流程如下：
-1. 安装服务：安装docker、docker-compose、firewalld等服务
-2. 配置环境：开发端口、配置docker镜像等
-3. 安装geth节点
-4. 添加enode节点：主要是组成私有网络
+# Task List
+The specific task process is as follows：
+1. install service：Install docker, docker-compose, firewalld and other services
+2. Configuration Environment：Development port, configure docker image, etc.
+3. Install geth node
+4. Add enode nodes: mainly to form a private network
