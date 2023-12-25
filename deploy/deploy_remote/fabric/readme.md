@@ -1,37 +1,37 @@
-# 介绍
-此为Fabric远程安装目录，需要通过ansible-playbook将程序拷贝到其它机器上自动安装任务部署并安装合约
+# Introduction
+This is the Fabric remote installation directory. You need to copy the program to other machines through ansible-playbook to automatically deploy the installation task and install the contract.
 
-# 文件介绍
-Fabric相关的文件统一放到fabric_pack中
+# Document introduction
+Fabric related files are unified into fabric_pack
 
-fabric使用的二进制版本为Fabric-2.2，当前目录中已经按照配置文件提前生成了证书文件和通道文件
+The binary version used by fabric is Fabric-2.2. The certificate file and channel file have been generated in advance according to the configuration file in the current directory.
 
-重要文件和目录介绍：
+Introduction to important files and directories：
 ```shell
-./fabric_pack/orders/create_crypto_config.sh：根据配置生成Fabric的通道和证书文件，并同步到peers目录
+./fabric_pack/orders/create_crypto_config.sh：Generate Fabric's channel and certificate files according to the configuration and synchronize them to the peers directory
 ```
 ```shell
-./fabric_pack/orders/crypto-config和./fabric_pack/peers/crypto-config： 同为证书文件
+./fabric_pack/orders/crypto-config和./fabric_pack/peers/crypto-config： Same as certificate file
 ```
 
 ```shell
-./fabric_pack/peers/chaincode：链码存放目录
+./fabric_pack/peers/chaincode：Chaincode storage directory
 ```
 ```shell
-./fabric_pack/peers/fabricdata/deploy：环境配置和链码安装脚本
+./fabric_pack/peers/fabricdata/deploy：Environment configuration and chaincode installation script
 ```
 
-# 执行命令
-因为使用相对路径，需要再当前目录下操作
+# Execute a command
+Because relative paths are used, operations need to be done in the current directory.
 ```shell
 ansible-playbook -i ansible_hosts_fabric.yaml ansible_deploy_fabric.yaml
 ```
-# 主机列表
-> 在使用ansible_hosts_fabric.yaml的时候请严格按照Fabric的集群进行更改。
+# Host list
+> When using ansible_hosts_fabric.yaml, please make changes strictly in accordance with the Fabric cluster.
 
-## 本项目的Fabric结构
-本项目请参考[配置文件](./fabric_pack/orders/crypto-config.yaml)，搭建的是三个order（raft算法），两个org，每个组织两个peer
-| ip地址       |     所属组织  | 节点名称  |节点域名  |
+## Fabric structure of this project
+Please refer to this project[Configuration file](./fabric_pack/orders/crypto-config.yaml)，Three orders are built（raft algorithm），two org，Two peers per organization
+| ip address       |     Organization  | Node name  |Node domain name  |
 | :----------- |:------------:|:------------:|:------------:|
 |   192.168.93.153    |   order  |orderer1|orderer1.example.com|
 |   192.168.93.154    |   order  |orderer2|orderer2.example.com|
@@ -41,16 +41,16 @@ ansible-playbook -i ansible_hosts_fabric.yaml ansible_deploy_fabric.yaml
 |   192.168.93.148    |   org2  |peer0.org2|peer0.org2.example.com|
 |   192.168.93.149    |   org2  |peer1.org2|peer1.org2.example.com|
 
-## 主机列表配置
+## Host list configuration
 ```shell
 fabric:
   vars:
-    workpath: "/opt/block/fabric" # 远程机器工作目录
+    workpath: "/opt/block/fabric" # Remote machine working directory
   
   children:
-    orders: # 根据Fabric的配置文件设置order的名字
+    orders: # Set the order name according to the Fabric configuration file
       hosts:
-        orderer1: # 该名字和域名的前缀保持一致
+        orderer1: # The name must be consistent with the prefix of the domain name
           ansible_host: 192.168.93.153
           ansible_user: test
         orderer2:
@@ -60,9 +60,9 @@ fabric:
           ansible_host: 192.168.93.155
           ansible_user: test
 
-    peers: # 根据Fabric的配置文件设置peer的名字
+    peers: # Set the peer name according to the Fabric configuration file
       hosts:
-        peer0.org1: # 该名字和域名的前缀保持一致
+        peer0.org1: # The name must be consistent with the prefix of the domain name
           ansible_host: 192.168.93.156
           ansible_user: test
 
@@ -78,7 +78,7 @@ fabric:
           ansible_host: 192.168.93.148
           ansible_user: test
 
-    peertool: # 单独设置peer用于链码的打包和通道创建，一般从peer中任意选一个
+    peertool: # Set up a separate peer for chain code packaging and channel creation. Generally, choose any one from the peer.
       hosts:
         peer0.org1:
           ansible_host: 192.168.93.156
@@ -86,11 +86,11 @@ fabric:
 
 ```
 
-# 任务列表
-具体的任务流程如下：
-1. 安装服务：安装docker、docker-compose、firewalld等服务
-2. 配置环境：开发端口、配置docker镜像等
-3. 安装node：用于机器状态数据上报
-4. 安装orders
-5. 安装peers
-6. 安装链码
+# task list
+The specific task process is as follows：
+1. install service：Install docker, docker-compose, firewalld and other services
+2. Configuration Environment：Development port, configure docker image, etc.
+3. Install node：Used for reporting machine status data
+4. Install orders
+5. Install peers
+6. Install chaincodes
