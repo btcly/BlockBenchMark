@@ -1,7 +1,7 @@
-# 介绍
-此为基础服务安装目录
+# Introduction
+This is the basic service installation directory
 
-安装mysql、prometheus、node_exporter本地服务程序，用于存储数据和监控机器状态
+Install mysql, prometheus, and node_exporter local service programs to store data and monitor machine status
 
-具体情况请根据需要安装
+Please install as needed according to specific circumstances.
 
