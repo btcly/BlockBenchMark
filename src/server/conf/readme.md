@@ -1,34 +1,34 @@
-# 介绍
-此为server端运行的参数配置
+# Introduction
+This is the parameter configuration for server-side operation
 
-# server配置
-配置文件路径为：./server/config_server.json
+# server configuration
+The configuration file path is：./server/config_server.json
 
-配置文件讲解
+Configuration file explanation
 ```shell
 {
-    "type" : "server", # 服务的类型
-    "mysql" : { # 安装mysql的信息
-        "userName" : "root", # 用户名
-        "password" : "123456",  # 密码
-        "ipAddrees" : "127.0.0.1", # 数据库的IP地址
-        "port" : "3306", # 数据库的端口
-        "dbName" : "block", # 数据库的名称
+    "type" : "server", # Type of service
+    "mysql" : { # Information about installing mysql
+        "userName" : "root", # username
+        "password" : "123456",  # password
+        "ipAddrees" : "127.0.0.1", # Database IP address
+        "port" : "3306", # Database port
+        "dbName" : "block", # database name
         "charset" : "utf8"
     },
-    "redis" : # redis的信息
+    "redis" : # redis information
     {
-        "url" : "127.0.0.1:6379", # redis的IP地址和端口
-        "passwd" : "" # 密码
+        "url" : "127.0.0.1:6379", # redis IP address and port
+        "passwd" : "" # password
     },
-    "sever_ip" :":5555", # 本地服务的端口号
-    "nodes" : # 本地服务支持的区块链种类
+    "sever_ip" :":5555", # The port number of the local service
+    "nodes" : # Blockchain types supported by local services
     [
         {
-            "name" : "ETHPersonal", # 名称，server和client保持一致
-            "nodeurl" : "ws://192.168.93.137:8546", # 区块链的地址
-            "conf":"", # 配置信息
-            "open" : true # 是否开启
+            "name" : "ETHPersonal", # Name, server and client remain consistent
+            "nodeurl" : "ws://192.168.93.137:8546", # Blockchain address
+            "conf":"", # Configuration information
+            "open" : true # Whether to turn on
         },
         {
             "name" : "MeepoPersonal",
@@ -47,15 +47,15 @@
 
 ```
 
-# 区块链配置
+# Blockchain configuration
 
 ## ETH && Meepo
-文件目录：./eth/keystore
+File Directory：./eth/keystore
 
-存放地址私钥信息
+Store address private key information
 ## Fabric
-证书文件：./fabric/crypto-config
+certificate file：./fabric/crypto-config
 
 
-fabric-sdk-go配置文件：./fabric/fabric_config.yaml
+fabric-sdk-go Configuration file：./fabric/fabric_config.yaml
 
