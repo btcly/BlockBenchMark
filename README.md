@@ -111,4 +111,4 @@ client run：
 For a detailed explanation of the configuration file running by Client, please see [here](./src/client/readme.md)
 
 # Others 
-> **For Fabric, Geth, and Meepo, please check the configuration file carefully.**
+> **For Fabric, Geth, and Meepo,Neuchain please check the configuration file carefully.**
