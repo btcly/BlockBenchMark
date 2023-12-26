@@ -2,7 +2,7 @@
 # Introduction
 This is a blockchain stress testing tool developed using Golang and supports EOV,OEV,EV and Sharding.
 # Architecture Diagram
-<div align=center><img width="1000" height="600" src="https://github.com/masnail/BlockBenchMark/assets/51044388/87ac2cfa-05cd-4f3f-803c-ba901daab1d1"/></div>
+
 
 
 # Software Version
