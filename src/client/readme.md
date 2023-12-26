@@ -1,21 +1,21 @@
-# 介绍
-此为client端运行的参数配置
+# Introduction
+This is the parameter configuration for client operation
 
-# client配置
+# client configuration
 
 ```shell
 
 {
-    "sever_ip" : ["127.0.0.1:5555"], # 连接server的IP，支持多个
-    "items" : # 当前client支持区块的种类
+    "sever_ip" : ["127.0.0.1:5555"], # IP to connect to the server, supports multiple
+    "items" : # The types of blocks currently supported by the client
     [
         {
             "type" : "client",
-            "blockname" : "Fabric", # 压测区块的名称
-            "chaincode" : "sacc", # 需要压测的合约
-            "functionParams" : ["get:1", "set:2"], # 压测合约的函数，组合含义：函数名称+参数个数
-            "qps" : 100, # 压测的QPS
-            "open" : true # 压测是否开启，true为开启
+            "blockname" : "Fabric", # The name of the stress test block
+            "chaincode" : "sacc", # Contracts requiring stress testing
+            "functionParams" : ["get:1", "set:2"], # The function of the stress testing contract, the combination meaning: function name and number of parameters
+            "qps" : 100, # QPS of stress test
+            "open" : true # Whether the stress test is enabled, true means enabled
         },
         {
             "type" : "client",
