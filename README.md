@@ -2,6 +2,7 @@
 # Introduction
 This is a blockchain stress testing tool developed using Golang and supports EOV,OEV,EV and Sharding.
 # Architecture Diagram
+![image](https://github.com/btcly/BlockBenchMark/assets/51044388/7c19e4d4-7c0a-4ee4-99c1-d15148790a0b)
 
 
 
