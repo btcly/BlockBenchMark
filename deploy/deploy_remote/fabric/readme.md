@@ -86,7 +86,7 @@ fabric:
 
 ```
 
-# task list
+# Task List
 The specific task process is as follows：
 1. install service：Install docker, docker-compose, firewalld and other services
 2. Configuration Environment：Development port, configure docker image, etc.
