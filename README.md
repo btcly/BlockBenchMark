@@ -1,4 +1,4 @@
-<img src="https://github.com/btcly/BlockBenchMark/assets/51044388/0c5a917e-7a8a-477a-ae47-50744409173b" width = "100" height = "60" div align=center />
+<div align=center>!<img src="https://github.com/btcly/BlockBenchMark/assets/51044388/0c5a917e-7a8a-477a-ae47-50744409173b" width = "100" height = "60" div align=center />
 
 # Introduction
 This is a blockchain stress testing tool developed using Golang and supports EOV,OEV,EV and Sharding.  
